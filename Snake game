@@ -1,0 +1,112 @@
+import pygame
+import random
+
+from pygame.time import Clock
+
+pygame.init()
+WIDTH,HEIGHT=500,500
+WINDOW=pygame.display.set_mode((WIDTH,HEIGHT))
+pygame.display.set_caption("Snake Game")
+
+white=(255,255,255)
+green=(0,255,0)
+red=(255,0,0)
+black=(0,0,0)
+
+font=pygame.font.Font(None,30)
+
+snake_x=250
+snake_y=250
+snake_size=20
+
+snake_body=[(snake_x,snake_y)]
+snake_length=1
+
+food_x=random.randint(0,WIDTH-snake_size)
+food_y=random.randint(0,HEIGHT-snake_size)
+food_size=20
+food_eaten=False
+food_eaten_time=0
+
+
+velocity_x=0
+velocity_y=0
+speed=20
+
+score=0
+
+running=True
+clock=pygame.time.Clock()
+while running:
+    WINDOW.fill(white)
+    pygame.draw.rect(WINDOW,green,(snake_x,snake_y,20,20))
+    pygame.draw.rect(WINDOW,red,(food_x,food_y,20,20))
+    for event in pygame.event.get():
+        if event.type== pygame.QUIT:
+            running=False
+        elif event.type==pygame.KEYDOWN:
+            if event.key==pygame.K_UP:
+                velocity_x=0
+                velocity_y=-speed
+            elif event.key==pygame.K_DOWN:
+                velocity_x=0
+                velocity_y=speed
+            elif event.key==pygame.K_LEFT:
+                velocity_x=-speed
+                velocity_y=0
+            elif event.key==pygame.K_RIGHT:
+                velocity_x=speed
+                velocity_y=0
+
+    snake_x+=velocity_x
+    snake_y+=velocity_y
+
+
+    #Prevents snake from moving out of bounds
+    if snake_x <0:
+        snake_x=0
+    elif snake_x > WIDTH-snake_size:
+        snake_x=WIDTH-snake_size
+
+    if snake_y <0:
+        snake_y=0
+    elif snake_y > HEIGHT-snake_size:
+        snake_y=HEIGHT-snake_size
+
+    if abs(snake_x-food_x)< snake_size and abs(snake_y-food_y)< snake_size:
+        food_eaten=True
+        food_eaten_time=pygame.time.get_ticks()
+        snake_length+=1
+        score+=1
+
+    if food_eaten and pygame.time.get_ticks()-food_eaten_time >500:
+        food_x = random.randint(0, WIDTH - snake_size)
+        food_y = random.randint(0, HEIGHT - snake_size)
+        food_eaten=False
+
+    snake_body.append((snake_x,snake_y))
+    if len(snake_body)>snake_length:
+        del snake_body[0]
+    for segment in snake_body[:-1]:
+         if segment==(snake_x,snake_y):
+             running=False
+
+    for segment in snake_body:
+        pygame.draw.rect(WINDOW,green,(segment[0],segment[1],snake_size,snake_size))
+
+    food_colour=black if food_eaten else red
+
+    score_display=font.render(f"Score{score}",True,black)
+    WINDOW.blit(score_display,(10,10))
+
+    pygame.draw.rect(WINDOW,food_colour,(food_x,food_y,food_size,food_size))
+    pygame.display.update()
+    clock.tick(10)
+
+WINDOW.fill(white)
+game_over_text=font.render("Game Over!",True,red)
+WINDOW.blit(game_over_text,(WIDTH//2-50,HEIGHT//2))
+pygame.display.update()
+pygame.time.delay(2000)
+
+pygame.quit()
