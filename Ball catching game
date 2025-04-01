@@ -1,0 +1,62 @@
+import pygame
+import pygame.display
+import random
+pygame.init()
+
+WIDTH,HEIGHT=700,500
+WINDOW=pygame.display.set_mode((WIDTH,HEIGHT))
+pygame.display.set_caption("BALL CATCHING GAME")
+
+BLUE=(0,0,255)
+RED=(255,0,0)
+WHITE=(255,255,255)
+
+bucket_a= 225
+bucket_b= 450
+bucket_WIDTH= 80
+bucket_HEIGHT= 20
+bucket_speed= 40
+
+ball_x=random.randint(50,450)
+ball_y=0
+ball_radius=20
+ball_speed=5
+
+score=0
+font=pygame.font.Font(None,36)
+clock=pygame.time.Clock()
+
+running=True
+while running:
+    WINDOW.fill(WHITE)
+
+    pygame.draw.rect(WINDOW,BLUE,(bucket_a,bucket_b,bucket_WIDTH,bucket_HEIGHT))
+    pygame.draw.circle(WINDOW,RED,(ball_x,ball_y),ball_radius)
+    ball_y += ball_speed
+
+    if ball_y + ball_radius >= bucket_b and bucket_a < ball_x < bucket_a + bucket_WIDTH:
+        score += 1
+        ball_x = random.randint(50, 450)
+        ball_y = 0
+
+    if ball_y > HEIGHT:
+        score -= 1
+        ball_x = random.randint(50, 450)
+        ball_y = 0
+
+
+    score_text = font.render(f"Score: {score}", True, (0, 0, 0))
+    WINDOW.blit(score_text,(10,10))
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            running=False
+
+        if event.type == pygame.KEYDOWN:
+            if event.key ==pygame.K_LEFT and bucket_a > 0:
+                bucket_a -= bucket_speed
+            if event.key ==pygame.K_RIGHT and bucket_a < WIDTH - bucket_WIDTH:
+                bucket_a += bucket_speed
+
+    pygame.display.update()
+    clock.tick(30)
+pygame.quit()
