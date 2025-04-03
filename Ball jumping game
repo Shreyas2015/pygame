@@ -1,0 +1,38 @@
+import pygame
+pygame.init()
+width,height=500,500
+WINDOW=pygame.display.set_mode((width,height))
+pygame.display.set_caption("Ball jumping game")
+
+white=(255,255,255)
+cyan=(0,255,255)
+
+
+ball_radius=20
+ball_x,ball_y=width/2,height-ball_radius
+ball_vel_y=0
+gravity=0.5
+jump_strength=-10
+
+running=True
+while running:
+    pygame.time.delay(30)
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            running=False
+        if event.type==pygame.KEYDOWN:
+            if event.key==pygame.K_SPACE:
+                ball_vel_y=jump_strength
+
+    ball_vel_y+=gravity
+    ball_y+=ball_vel_y
+
+    if ball_y>=height-ball_radius:
+        ball_y=height-ball_radius
+        ball_vel_y=0
+
+
+    WINDOW.fill(white)
+    pygame.draw.circle(WINDOW,cyan,(ball_x,ball_y),ball_radius)
+    pygame.display.update()
+pygame.quit()
