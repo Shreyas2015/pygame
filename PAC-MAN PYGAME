@@ -1,0 +1,96 @@
+import pygame
+import sys
+
+
+# Initialize pygame
+pygame.init()
+
+# Constants
+WIDTH, HEIGHT = 600, 600
+GRID_SIZE = 20
+FPS = 10
+YELLOW = (255, 255, 0)
+BLACK = (0, 0, 0)
+BLUE = (0, 0, 255)
+WHITE = (255, 255, 255)
+
+# Set up the screen
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Mini Pac-Man")
+clock = pygame.time.Clock()
+
+# Pac-Man class
+class PacMan:
+    def __init__(self):
+        self.x = GRID_SIZE
+        self.y = GRID_SIZE
+        self.speed = GRID_SIZE
+        self.dx = 0
+        self.dy = 0
+
+    def move(self):
+        self.x += self.dx
+        self.y += self.dy
+
+    def draw(self):
+        pygame.draw.circle(screen, YELLOW, (self.x + GRID_SIZE//2, self.y + GRID_SIZE//2), GRID_SIZE//2)
+
+# Dots
+dots = []
+for i in range(3, 28, 4):
+    for j in range(3, 28, 4):
+        dots.append(pygame.Rect(i * GRID_SIZE, j * GRID_SIZE, 6, 6))
+
+# Main game loop
+def game_loop():
+    pacman = PacMan()
+
+    while True:
+        screen.fill(BLACK)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            # Handle movement
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    pacman.dx = -pacman.speed
+                    pacman.dy = 0
+                elif event.key == pygame.K_RIGHT:
+                    pacman.dx = pacman.speed
+                    pacman.dy = 0
+                elif event.key == pygame.K_UP:
+                    pacman.dy = -pacman.speed
+                    pacman.dx = 0
+                elif event.key == pygame.K_DOWN:
+                    pacman.dy = pacman.speed
+                    pacman.dx = 0
+
+        pacman.move()
+
+        # Keep Pac-Man in bounds
+        pacman.x %= WIDTH
+        pacman.y %= HEIGHT
+
+        # Draw Pac-Man
+        pacman.draw()
+
+        # Draw and check dots
+        for dot in dots[:]:
+            if pygame.Rect(pacman.x, pacman.y, GRID_SIZE, GRID_SIZE).colliderect(dot):
+                dots.remove(dot)
+            else:
+                pygame.draw.rect(screen, WHITE, dot)
+
+        # Draw grid (optional)
+        for x in range(0, WIDTH, GRID_SIZE):
+            pygame.draw.line(screen, BLUE, (x, 0), (x, HEIGHT))
+        for y in range(0, HEIGHT, GRID_SIZE):
+            pygame.draw.line(screen, BLUE, (0, y), (WIDTH, y))
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+game_loop()
