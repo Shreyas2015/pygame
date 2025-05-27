@@ -1,0 +1,49 @@
+import turtle
+flower=turtle.Turtle()
+flower.shape("turtle")
+flower.pencolor("orange")
+flower.pensize(3)
+flower.speed(5)
+
+def draw_petal():
+    flower.fillcolor("yellow")
+    flower.begin_fill()
+    flower.circle(30,60)
+    flower.left(120)
+    flower.circle(30,60)
+    flower.end_fill()
+
+for i in range(6):
+    draw_petal()
+    flower.left(60)
+
+
+flower.penup()
+flower.goto(0,-10)
+flower.pendown()
+flower.fillcolor("yellow")
+flower.begin_fill()
+flower.circle(10)
+flower.end_fill()
+
+flower.penup()
+flower.goto(0,-15)
+flower.pendown()
+flower.pencolor("green")
+flower.setheading(270)
+flower.pensize(5)
+flower.forward(80)
+
+
+flower.penup()
+flower.goto(0,-70)
+flower.setheading(-50)
+flower.pendown()
+flower.pencolor("green")
+flower.begin_fill()
+flower.circle(30,90)
+flower.left(90)
+flower.circle(30,90)
+flower.end_fill()
+
+turtle.done()
