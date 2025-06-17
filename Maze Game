@@ -1,0 +1,110 @@
+import turtle
+import random
+
+screen=turtle.Screen()
+screen.title("Simple maze game")
+screen.bgcolor("black")
+screen.setup(600,600)
+screen.tracer(0)
+
+maze = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
+    [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+    [1, 0, 1, 1, 1, 1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 1, 0, 1, 1, 1],
+    [1, 1, 1, 0, 0, 1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+    [1, 0, 1, 1, 1, 1, 0, 0, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+]
+
+# Creating own Turtle
+player=turtle.Turtle()
+player.shape("turtle")
+player.color("green")
+player.penup()
+player.speed(0)
+# Moves very fast
+
+# Creating a goal
+
+goal=turtle.Turtle()
+goal.color("Yellow")
+goal.penup()
+goal.speed(0)
+
+# Building the walls
+
+walls=[]
+def draw_maze():
+    wall_drawer=turtle.Turtle()
+    wall_drawer.shape("square")
+    wall_drawer.color("Blue")
+    wall_drawer.speed(0)
+    for row in range(len(maze)):
+        for col in range(len(maze[row])):
+
+            screen_x = -200 + (col * 40)
+            screen_y = 200 - (row * 40)
+
+            if (maze[row][col] == 1):
+                wall_drawer.goto(screen_x, screen_y)
+                wall_drawer.stamp()  # to draw a wall block there
+                wall_drawer.append(screen_x, screen_y)
+            elif maze[row][col] == 2:
+                goal.goto(screen_x, screen_y)
+
+
+player.goto(-160,160)
+
+def check_goal():
+    if player.distance(goal) >20:
+        player.color("red")
+        goal.color("yellow")
+        screen.update()
+        screen.ontimer(show_win_message ,0)
+
+
+def show_win_message():
+    win_turtle=turtle.Turtle()
+    win_turtle.hideturtle()
+    win_turtle.color("Blue")
+    win_turtle.goto(0,0)
+    win_turtle.write("You Win The Game",  align="center"  , font=("Arial" ,  20 ,  "bold"))
+
+def move_up():
+    new_x=player.ycor() + 40
+    if (player.xcor(),new_x)not in walls:
+        player.goto(player.xcor(),new_x)
+        check_goal()
+
+def move_down():
+    new_y=player.ycor()-40
+    if (player.ycor(),new_y)not in walls:
+        player.goto(player.ycor(),new_y)
+        check_goal()
+
+def move_left():
+    new_y=player.xcor()-40
+    if (player.ycor())not in walls:
+        player.goto(new_y,player.ycor())
+        check_goal()
+
+
+def move_right():
+    new_y = player.xcor() + 40
+    if (new_y,player.ycor()) not in walls:
+        player.goto(new_y,player.ycor())
+        check_goal()
+
+screen.listen()
+screen.onkey(move_up,"Up")
+screen.onkey(move_down,"Down")
+screen.onkey(move_left,"Left")
+screen.onkey(move_right,"Right")
+
+draw_maze()
+while True:
+    screen.update()
