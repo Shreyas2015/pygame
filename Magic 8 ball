@@ -1,0 +1,34 @@
+import turtle
+import random
+
+screen=turtle.Screen()
+screen.title("Magic 8 ball")
+screen.bgcolor("Yellow")
+screen.setup(width=600,height=600)
+ball=turtle.Turtle()
+ball.shape("Circle")
+ball.color("Black")
+ball.shapesize(10)
+ball.penup()
+
+
+text_turtle=turtle.Turtle()
+text_turtle.hideturtle()
+text_turtle.color("white")
+text_turtle.penup()
+text_turtle.goto(0, 150)
+
+eight_turtle=turtle.Turtle()
+eight_turtle.hideturtle()
+eight_turtle.color("white")
+eight_turtle.penup()
+eight_turtle.goto(0, -30)
+eight_turtle.write("8",align="center",font=("Arial",60,"bold"))
+
+answers=[
+    "yes","no","ask again later","definitely","I don't think soo","First go play fortnite and do the quests","Maybe","answer properly","Try again"
+]
+
+
+
+
