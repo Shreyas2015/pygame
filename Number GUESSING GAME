@@ -1,35 +1,39 @@
+
 import turtle
-import  random
+import random
+import time
 
 screen=turtle.Screen()
-screen.title("Turtle guessing game")
-screen.bgcolor("Yellow")
+screen.title("Turtle Guessing Game")
+screen.bgcolor("lightyellow")
 
+#Create a turtle for writing
 pen=turtle.Turtle()
 pen.hideturtle()
 pen.penup()
 pen.goto(0,0)
 
-
-
-
-secret=random.randint(1,90)
+secret=random.randint(1,10)
 
 while True:
-    guess=screen.textinput("Guessing game" , "i am thinking of a number between 1  and  try your best")
+    guess=screen.textinput("Guessing Game","I am thinking a number between 1 and 10 Try to guess")
     if guess:
         try:
             guess=int(guess)
             if guess==secret:
                 pen.clear()
-                pen.write("Correct ! You guessed it",align="center",font=("Arial",16,"bold"))
+                pen.write("Correct ! You guessed it",align="center", font=("Arial",16,"bold"))
                 break
             else:
                 pen.clear()
-                pen.write("Correct ! You guessed it correct",align="center",font=("Arial",16,"Bold"))
+                pen.write("Try again",align="center",font=("Arial",16,"bold"))
 
         except ValueError():
             pen.clear()
-            pen.write("Pls enter a valid number")
-        else:pen.clear()
-        pen.write("You din't write anything do i look like a fool to you do it properl!!!",align="center",font=("Arial",16,"Bold"))
+            pen.write("Please enter a valid number",align="center",font=("Arial",16,"bold"))
+
+    else:
+        pen.clear()
+        pen.write("You didnt enter anything !",align="center",font=("Arial",16,"bold"))
+turtle.done()
+
