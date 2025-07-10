@@ -1,12 +1,14 @@
 import turtle
 import random
+import time
+
 
 screen=turtle.Screen()
 screen.title("Magic 8 ball")
 screen.bgcolor("Yellow")
 screen.setup(width=600,height=600)
 ball=turtle.Turtle()
-ball.shape("Circle")
+ball.shape("circle")
 ball.color("Black")
 ball.shapesize(10)
 ball.penup()
@@ -28,6 +30,34 @@ eight_turtle.write("8",align="center",font=("Arial",60,"bold"))
 answers=[
     "yes","no","ask again later","definitely","I don't think soo","First go play fortnite and do the quests","Maybe","answer properly","Try again"
 ]
+
+def show_answer():
+    text_turtle.clear()
+    answer=random.choice(answers)
+    text_turtle.write(answer,align="center" ,font=("Arial",18 ,"bold"))
+
+def shake_motion(steps=6):
+    original_x=ball.xcor()
+    for i in range(steps):
+        shift = 10 if i % 2 == 0 else -10
+
+        ball.setx(original_x + shift)
+        eight_turtle.setx(original_x + shift)
+        screen.update()
+        time.sleep(0.05)
+        ball.setx(original_x)
+        eight_turtle.setx(original_x)
+
+
+def shake_magic_ball(x,y):
+    text_turtle.clear()
+    text_turtle.write("Shaking...",align="center",font=("Arial",18,"Italic"))
+
+
+    screen.ontimer(show_answer,1000)
+screen.onclick(shake_magic_ball)
+turtle.done()
+
 
 
 
