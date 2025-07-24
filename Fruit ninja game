@@ -1,4 +1,3 @@
-
 import pygame
 import random
 
@@ -19,7 +18,7 @@ font= pygame.font.Font(None,36)
 fruits=[]
 
 ADD_FRUITS=pygame.USEREVENT+ 1
-pygame.time.set_timer(ADD_FRUITS,100)
+pygame.time.set_timer(ADD_FRUITS,2000)
 
 score=0
 game_over=False
@@ -41,7 +40,7 @@ while running:
 
             fruits.append(fruit)
 
-        if pygame.mouse.get_pressed()[0]:
+    if pygame.mouse.get_pressed()[0]:
             mouse_pos=pygame.mouse.get_pos()
             for fruit in fruits[:]:
 
@@ -51,7 +50,7 @@ while running:
                     fruits.remove(fruit)
                     score+=1
 
-        if not game_over:
+    if not game_over:
             for fruit in fruits[:]:
                 fruit["y"]+= fruit["speed"]
                 pygame.draw.circle(screen,RED,(fruit["x"] + 25,fruit["y"] + 25), fruit["radius"])
@@ -60,11 +59,11 @@ while running:
 
     score_text=font.render(f"Score: {score}",True,black)
     screen.blit(score_text,(10,10))
-     if game_over:
+    if game_over:
          over_text=font.render("Game over!",True,RED)
          screen.blit(over_text,(WIDTH // 2-80, HEIGHT // 2))
 
-         pygame.display.flip()
-         clock.tick(60)
-        
+    pygame.display.flip()
+    clock.tick(60)
+
 pygame.quit()
