@@ -1,0 +1,70 @@
+
+import pygame
+import random
+
+pygame.init()
+WIDTH, HEIGHT=600,600
+screen=pygame.display.set_mode((WIDTH,HEIGHT))
+pygame.display.set_caption("Fruit ninja - circle version")
+
+clock=pygame.time.Clock()
+
+WHITE=(255,255,255)
+black=(0,0,0)
+RED=(255,0,0)
+
+
+font= pygame.font.Font(None,36)
+
+fruits=[]
+
+ADD_FRUITS=pygame.USEREVENT+ 1
+pygame.time.set_timer(ADD_FRUITS,100)
+
+score=0
+game_over=False
+running=True
+
+while running:
+    screen.fill(WHITE)
+
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            running=False
+        if event.type == ADD_FRUITS and not game_over:
+            fruit={
+                "x": random.randint(0,WIDTH-50),
+                "y":0,
+                "speed":random.randint(3,7),
+                "radius":25
+            }
+
+            fruits.append(fruit)
+
+        if pygame.mouse.get_pressed()[0]:
+            mouse_pos=pygame.mouse.get_pos()
+            for fruit in fruits[:]:
+
+                dx=fruit["x"] + 25 - mouse_pos[0]
+                dy=fruit["y"] + 25 - mouse_pos[1]
+                if (dx * dx + dy *dy) < fruit["radius"] ** 2:
+                    fruits.remove(fruit)
+                    score+=1
+
+        if not game_over:
+            for fruit in fruits[:]:
+                fruit["y"]+= fruit["speed"]
+                pygame.draw.circle(screen,RED,(fruit["x"] + 25,fruit["y"] + 25), fruit["radius"])
+                if fruit["y"]>HEIGHT:
+                    game_over=True
+
+    score_text=font.render(f"Score: {score}",True,black)
+    screen.blit(score_text,(10,10))
+     if game_over:
+         over_text=font.render("Game over!",True,RED)
+         screen.blit(over_text,(WIDTH // 2-80, HEIGHT // 2))
+
+         pygame.display.flip()
+         clock.tick(60)
+        
+pygame.quit()
