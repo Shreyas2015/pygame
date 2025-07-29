@@ -1,0 +1,33 @@
+import turtle
+import random
+
+screen=turtle.Screen()
+screen.title("Turtle Race")
+screen.bgcolor("Lightblue")
+
+finish=turtle.Turtle()
+finish.penup()
+finish.goto(200,-100)
+finish.left(90)
+finish.pendown()
+finish.forward(200)
+finish.hideturtle()
+
+t1=turtle.Turtle()
+t1.color("red")
+t1.shape("turtle")
+t1.penup()
+t1.goto(-200,20)
+
+t2=turtle.Turtle()
+t2.color("green")
+t2.shape("turtle")
+t2.penup()
+t2.goto(-200,-20)
+
+while t1.xcor() < 200 and t2.xcor() <200:
+    t1.forward(random.randint(1,10))
+    t2.forward(random.randint(1,10))
+
+winner="red turtle" if t1.xcor() > t2.xcor() else "Green turtle"
+print(winner,"wins!!")
