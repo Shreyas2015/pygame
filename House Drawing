@@ -1,5 +1,4 @@
 import pygame
-from pygame.examples.video import backgrounds
 
 pygame.init()
 
@@ -9,28 +8,28 @@ pygame.display.set_caption("Detailed House Drawing")
 running=True
 while running:
     screen.fill((135,206,235))
+    pygame.draw.rect(screen,(34,139,34),(0,300,600,100))
+    pygame.draw.rect(screen,(210,180,140),(200,200,200,150))
+    pygame.draw.polygon(screen,(165,42,42),[(200,200),(300,120),(400,200)])
+    pygame.draw.circle(screen,(255,255,0),(80,80),40)
+    pygame.draw.rect(screen,(139,69,19),(280,270,40,80))
+    pygame.draw.circle(screen,(0,0,0),(315,310),5)
+    pygame.draw.rect(screen,(173,216,230),(220,230,40,40))
+    pygame.draw.line(screen,(0,0,0),(240,230),(240,270),2)
+    pygame.draw.line(screen,(0,0,0),(220,250),(260,250),2)
+    pygame.draw.rect(screen,(173,216,230),(340,230,40,40))
+    pygame.draw.line(screen,(0,0,0),(360,230),(360,270),2)
+    pygame.draw.line(screen,(0,0,0),(340,250),(380,250),2)
+    pygame.draw.rect(screen,(139,69,19),(500,230,20,70))
+    pygame.draw.circle(screen,(0,128,0),(510,200),40)
+    pygame.draw.circle(screen,(0,128,0),(540,210),30)
 
-pygame.draw.rect(screen,(34,139,34),(0,300,600,100))
-pygame.draw.rect(screen,(210,180,140),(200,200,200,150))
-pygame.draw.polygon(screen,(165,42,42),[(200,200),(300,120),(400,200)])
-pygame.draw.circle(screen,(255,255,0,(80,80),40))
-pygame.draw.rect(screen,(139,69,19),(280,270,40,80))
-pygame.draw.circle(screen,(0,0,0),(315,310),5)
-pygame.draw.rect(screen,(173,216,230),(220,230,40,40))
-pygame.draw.line(screen,(0,0,0),(240,230),(240,270),2)
-pygame.draw.line(screen,(0,0,0),(220,250),(260,250),2)
-pygame.draw.rect(screen,(173,216,230),(340,230,40,40))
-pygame.draw.line(screen,(0,0,0),(360,230),(360,270),2)
-pygame.draw.line(screen,(0,0,0),(340,250),(380,250),2)
-pygame.draw.rect(screen,(139,69,19),(500,230,20,70))
-pygame.draw.circle(screen,(0,128,0),(510,200),40)
-pygame.draw.circle(screen,(0,128,0),(540,210),30)
-
-for event in pygame.event.get():
-    if event.type==pygame.QUIT:
-        runnning=False
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            running=False
 
 
-pygame.display.update()
+    pygame.display.update()
+
+   
 pygame.quit()
-
