@@ -1,0 +1,83 @@
+import pygame
+import random
+import time
+
+pygame.init()
+
+WIDTH,HEIGHT=600,400
+screen= pygame.display.set_mode((WIDTH,HEIGHT))
+pygame.display.set_caption("Shoot the birds")
+
+white=(255,255,255)
+black=(0,0,0)
+
+font=pygame.font.SysFont(None,36)
+
+bird_img_original=pygame.image.load("bird.png")
+bird_img=pygame.transform.scale(bird_img_original,(60,60))
+bird_radius=20
+
+bird_spawn_time=2
+bird_timeout=3
+
+birds=[]
+score=0
+missed=0
+max_missed=5
+running=True
+last_spawn_time=time.time()
+
+while running:
+    screen.fill(white)
+    current_time=time.time()
+
+    if current_time-last_spawn_time>bird_spawn_time:
+        x=random.randint(bird_radius,WIDTH-bird_radius)
+        y=random.randint(bird_radius,HEIGHT-bird_radius)
+        birds.append({"pos": (x,y), "spawned_at": current_time})
+        last_spawn_time=current_time
+
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            running=False
+        elif event.type==pygame.MOUSEBUTTONDOWN:
+            mouse_pos=pygame.mouse.get_pos()
+
+    for event in pygame.event.get():
+            if event.type==pygame.QUIT:
+                running=False
+            elif event.type==pygame.MOUSEBUTTONDOWN:
+                mouse_pos=pygame.mouse.get_pos()
+                for bird in birds[:]:
+                    bx,by =bird["pos"]
+                    distance=((mouse_pos[0]-bx)**2 + (mouse_pos[1]-by)**2)**0.5
+                    if distance<=bird_radius:
+                        birds.remove(bird)
+                        score+=1
+
+    for bird in birds[:]:
+        if current_time-bird["spawned at"] >bird_timeout:
+            birds.remove(bird)
+            missed+=1
+
+        for birds in birds:
+            bx,by=bird["pos"]
+            screen.blit(bird_img, (bx-bird_radius,by - bird_radius))
+
+        score_text=font.render(f"score:{score}",True,black)
+        missed_text=font.render(f"Missed:{missed_text}/{max_missed}",True,black)
+        screen.blit(score_text,(10,10))
+        screen.blit(missed_text,(10,50))
+
+    if missed>=max_missed:
+        game_over_text=font.render("Game Over!!",True,(200,0,0))
+        screen.blit(game_over_text,(WIDTH//2-80,HEIGHT//2))
+
+    pygame.display.flip()
+    pygame.time.delay(2000)
+    running = False
+
+    pygame.display.flip()
+    pygame.time.delay(100)
+
+pygame.quit()
