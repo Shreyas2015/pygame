@@ -38,12 +38,6 @@ while running:
         last_spawn_time=current_time
 
     for event in pygame.event.get():
-        if event.type==pygame.QUIT:
-            running=False
-        elif event.type==pygame.MOUSEBUTTONDOWN:
-            mouse_pos=pygame.mouse.get_pos()
-
-    for event in pygame.event.get():
             if event.type==pygame.QUIT:
                 running=False
             elif event.type==pygame.MOUSEBUTTONDOWN:
@@ -56,26 +50,26 @@ while running:
                         score+=1
 
     for bird in birds[:]:
-        if current_time-bird["spawned at"] >bird_timeout:
+        if current_time-bird["spawned_at"] >bird_timeout:
             birds.remove(bird)
             missed+=1
 
-        for birds in birds:
-            bx,by=bird["pos"]
-            screen.blit(bird_img, (bx-bird_radius,by - bird_radius))
+    for bird in birds:
+        bx,by=bird["pos"]
+        screen.blit(bird_img, (bx-bird_radius,by - bird_radius))
 
-        score_text=font.render(f"score:{score}",True,black)
-        missed_text=font.render(f"Missed:{missed_text}/{max_missed}",True,black)
-        screen.blit(score_text,(10,10))
-        screen.blit(missed_text,(10,50))
+    score_text=font.render(f"score:{score}",True,black)
+    missed_text=font.render(f"Missed:{missed}/{max_missed}",True,black)
+    screen.blit(score_text,(10,10))
+    screen.blit(missed_text,(10,50))
 
     if missed>=max_missed:
         game_over_text=font.render("Game Over!!",True,(200,0,0))
         screen.blit(game_over_text,(WIDTH//2-80,HEIGHT//2))
-
-    pygame.display.flip()
-    pygame.time.delay(2000)
-    running = False
+        pygame.display.flip()
+        pygame.time.delay(2000)
+        running = False
+    
 
     pygame.display.flip()
     pygame.time.delay(100)
