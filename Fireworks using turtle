@@ -10,7 +10,7 @@ pen=turtle.Turtle()
 pen.hideturtle()
 pen.speed(0)
 
-colors=["red","cyan","light yellow","dark maron","dark green","purple","white"]
+colors=["red","cyan","lightyellow","darkmaroon","darkgreen","purple"]
 
 
 def fireworks():
@@ -24,11 +24,11 @@ def fireworks():
     color=random.choice(colors)
     pen.color(color)
 
+    for i in range(36):
+        pen.forward(100)
+        pen.backward(100)
+        pen.right(10)
 
-for i in range(36):
-    pen.forward(100)
-    pen.backward(100)
-    pen.right(10)
 
 win.listen()
 win.onkey(fireworks,"space")
@@ -36,6 +36,6 @@ win.onkey(fireworks,"space")
 pen.penup()
 pen.goto(0,-250)
 pen.color("white")
-pen.write("Press SPACE to lanch a firework ",align="center",font=("Arial",16,"bold"))
+pen.write("Press SPACE to launch a firework ",align="center",font=("Arial",16,"bold"))
 
 win.mainloop()
