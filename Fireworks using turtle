@@ -1,0 +1,41 @@
+import turtle
+import random
+
+win=turtle.Screen()
+win.title("Turtle Fireworks Show")
+win.bgcolor("black")
+win.setup(width=800,height=600)
+
+pen=turtle.Turtle()
+pen.hideturtle()
+pen.speed(0)
+
+colors=["red","cyan","light yellow","dark maron","dark green","purple","white"]
+
+
+def fireworks():
+    pen.penup()
+    x=random.randint(-300,300)
+    y=random.randint(-200,200)
+    pen.goto(x,y)
+    pen.pendown()
+
+
+    color=random.choice(colors)
+    pen.color(color)
+
+
+for i in range(36):
+    pen.forward(100)
+    pen.backward(100)
+    pen.right(10)
+
+win.listen()
+win.onkey(fireworks,"space")
+
+pen.penup()
+pen.goto(0,-250)
+pen.color("white")
+pen.write("Press SPACE to lanch a firework ",align="center",font=("Arial",16,"bold"))
+
+win.mainloop()
