@@ -1,0 +1,57 @@
+import turtle
+
+win=turtle.Screen()
+win.title("Paint brush by Turtle")
+win.bgcolor("lightgray")
+win.setup(width=800,height=600)
+
+pen=turtle.Turtle()
+pen.shape("turtle")
+pen.speed(0)
+
+def go_up():
+    pen.setheading(90)
+    pen.forward(20)
+def go_down():
+    pen.setheading(270)
+    pen.forward(20)
+def go_left():
+    pen.setheading(0)
+    pen.forward(20)
+def go_right():
+    pen.setheading(0)
+    pen.forward(20)
+
+def red():
+    pen.color("red")
+def blue():
+    pen.color("blue")
+def green():
+    pen.color("green")
+def yellow():
+    pen.color("yellow")
+def clear_screen():
+    pen.clear()
+
+win.listen()
+win.onkey(go_up,"Up")
+win.onkey(go_down,"Down")
+win.onkey(go_left,"Left")
+win.onkey(go_right,"Right")
+
+win.onkey(red,"r")
+win.onkey(blue,"b")
+win.onkey(green,"g")
+win.onkey(yellow,"y")
+win.onkey(clear_screen,"c")
+
+pen.penup()
+pen.goto(-380,260)
+pen.write("Arrow Keys=move|R=Red|B=Blue|G=Green|Y=Yellow|C=Clear" ,font=("Arial",12,"bold"))
+
+pen.goto(0,0)
+pen.pendown()
+
+win.mainloop()
+
+
