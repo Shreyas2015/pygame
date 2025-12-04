@@ -18,7 +18,7 @@ BLACK=(0,0,0)
 RED=(200,50,50)
 
 font=pygame.font.Font(None,50)
-choices=["rock","paper","scissor"]
+choices=["rock","paper","scissors"]
 Player_choice=" "
 computer_choice=" "
 result=" "
@@ -59,7 +59,7 @@ while running:
         draw_rock(500,300)
     elif computer_choice=="paper":
         draw_paper(500,300)
-    elif computer_choice=="Scissors":
+    elif computer_choice=="scissors":
         draw_scissors(500,300)
 
 
