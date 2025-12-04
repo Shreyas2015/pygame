@@ -35,11 +35,9 @@ def draw_paper(x,y):
     pygame.draw.rect(screen, (255, 255, 255), (x - 50, y - 50, 100, 100))
     pygame.draw.rect(screen, (0, 0, 0), (x - 50, y - 50, 100, 100))
 
-
-
 def draw_scissors(x,y):
-    pygame.draw.rect(screen,(0,0,0),(x-50,y-50,25,25))
-    pygame.draw.rect(screen,(0,0,0),(x+25,y-50,25,25))
+    pygame.draw.line(screen,(0,0,0),(x-30,y-30),(x+30,y+30),4)
+    pygame.draw.line(screen,(0,0,0),(x+30,y-30),(x-30,y+30),4)
     pygame.draw.circle(screen,(255,0,0),(x,y),8)
 
 running=True
@@ -71,19 +69,19 @@ while running:
             running=False
         if event.type==pygame.KEYDOWN:
             if event.key==pygame.K_r:
-                player_choice="rock"
+                Player_choice="rock"
             elif event.key==pygame.K_p:
-                player_choice="paper"
+                Player_choice="paper"
             elif event.key==pygame.K_s:
-                player_choice="scissors"
+                Player_choice="scissors"
             else:
-                player_choice=""
+                Player_choice=""
 
-            if player_choice:
+            if Player_choice:
                 computer_choice=random.choice(choices)
-                if player_choice==computer_choice:
+                if Player_choice==computer_choice:
                     result="it is a draw"
-                elif(player_choice=="rock" and computer_choice=="scissors") or (player_choice=="paper" and computer_choice=="rock") or (player_choice=="scissors" and computer_choice=="paper"):
+                elif(Player_choice=="rock" and computer_choice=="scissors") or (Player_choice=="paper" and computer_choice=="rock") or (Player_choice=="scissors" and computer_choice=="paper"):
                     result="congragulations you have won the round"
                 else:
                     result="sorry you lost better luck next time"
