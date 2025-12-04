@@ -1,0 +1,93 @@
+
+import pygame
+import random
+
+
+
+pygame.init()
+width,height=800,800
+
+screen=pygame.display.set_mode((width,height))
+pygame.display.set_caption("Rock Paper and Scissors")
+
+WHITE=(255,255,255)
+BLUE=(135,206,235)
+GREEN=(34,139,34)
+GRAY=(200,200,200)
+BLACK=(0,0,0)
+RED=(200,50,50)
+
+font=pygame.font.Font(None,50)
+choices=["rock","paper","scissor"]
+Player_choice=" "
+computer_choice=" "
+result=" "
+
+def draw_text(text,x,y,color=BLACK):
+    img=font.render(text,True,color)
+    screen.blit(img,(x,y))
+
+def draw_rock(x,y):
+    pygame.draw.circle(screen,(128,0,0),(x,y),50)
+    pygame.draw.circle(screen,(0,0,0),(x,y),50,3)
+
+def draw_paper(x,y):
+    pygame.draw.rect(screen, (255, 255, 255), (x - 50, y - 50, 100, 100))
+    pygame.draw.rect(screen, (0, 0, 0), (x - 50, y - 50, 100, 100))
+
+
+
+def draw_scissors(x,y):
+    pygame.draw.rect(screen,(0,0,0),(x-50,y-50,25,25))
+    pygame.draw.rect(screen,(0,0,0),(x+25,y-50,25,25))
+    pygame.draw.circle(screen,(255,0,0),(x,y),8)
+
+running=True
+
+while running:
+    screen.fill((255,255,255))
+    draw_text("Press R,P or S to play",200,50)
+    draw_text("Player vs Computer",170,150,(0,100,200))
+    draw_text("Score:",600,700,(255,0,0))
+
+    if Player_choice =="rock":
+        draw_rock(200,300)
+    elif Player_choice=="paper":
+        draw_paper(200,300)
+    elif Player_choice=="Scissors":
+        draw_scissors(200,300)
+
+    if computer_choice =="rock":
+        draw_rock(500,300)
+    elif computer_choice=="paper":
+        draw_paper(500,300)
+    elif computer_choice=="Scissors":
+        draw_scissors(500,300)
+
+
+
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            running=False
+        if event.type==pygame.KEYDOWN:
+            if event.key==pygame.K_r:
+                player_choice="rock"
+            elif event.key==pygame.K_p:
+                player_choice="paper"
+            elif event.key==pygame.K_s:
+                player_choice="scissors"
+            else:
+                player_choice=""
+
+            if player_choice:
+                computer_choice=random.choice(choices)
+                if player_choice==computer_choice:
+                    result="it is a draw"
+                elif(player_choice=="rock" and computer_choice=="scissors") or (player_choice=="paper" and computer_choice=="rock") or (player_choice=="scissors" and computer_choice=="paper"):
+                    result="congragulations you have won the round"
+                else:
+                    result="sorry you lost better luck next time"
+
+
+    pygame.display.update()
+pygame.quit()
