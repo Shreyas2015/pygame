@@ -1,3 +1,4 @@
+
 import pygame
 
 pygame.init()
@@ -28,14 +29,30 @@ def draw_fruit_tree(x, y):
     for x in range(0, WIDTH, 60):
         pygame.draw.rect(screen, WHITE, (x + 10, 535, 50, 6))
 
+def draw_windows(x,y,width,height):
+    window_width=16
+    window_height=20
+    gap=10
+
+    for row in range(y+20,y+height-30,window_height+gap):
+        for col in range(x+10,x+width-10,window_width+gap):
+            pygame.draw.rect(screen,WHITE,col,row,window_width,window_height)
+
+
 running = True
 while running:
     screen.fill(AQUA)
     pygame.draw.circle(screen,YELLOW, (700, 80), 40)
+
     pygame.draw.rect(screen, GRAY, (90, 150, 100, 305))
+    draw_windows(90,150,100,305)
     pygame.draw.rect(screen, DARKGREY, (200, 100, 100, 358))
+    draw_windows(200,100,100,358)
     pygame.draw.rect(screen, GRAY, (350, 90, 150, 365))
+    draw_windows(350,90,150,365)
     pygame.draw.rect(screen, DARKGREY, (550, 90, 100, 365))
+    draw_windows(550,90,100,365)
+
     pygame.draw.rect(screen, (60, 60, 60), (0, 470, WIDTH, 200))
     pygame.draw.rect(screen, RED, (100, 470, 120, 50))
     pygame.draw.rect(screen, RED, (130, 450, 60, 50))
@@ -65,3 +82,5 @@ while running:
     draw_fruit_tree(10,387)
     pygame.display.update()
 pygame.quit()
+
+
