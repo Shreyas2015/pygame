@@ -1,1 +1,1 @@
-hi i am shreyas i love python and coding i like to create games thanks for reading!!!!!
+Take risks in life - if you win , you lead , you lose , you get wiser.
