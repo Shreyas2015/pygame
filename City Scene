@@ -1,0 +1,67 @@
+import pygame
+
+pygame.init()
+
+WIDTH,HEIGHT=800,600
+screen=pygame.display.set_mode((800,600))
+pygame.display.set_caption("City scene")
+
+GREEN=(34,139,34)
+WHITE=(255,255,255)
+BLACK=(0,0,0)
+RED=(200,50,50)
+GRAY=(200,200,200)
+YELLOW=(255, 255, 0)
+DARKGREY=(169, 169, 169)
+AQUA=(179, 236, 255)
+
+def draw_fruit_tree(x, y):
+    # Trunk
+    pygame.draw.rect(screen, (101, 67, 33), (x + 15, y + 35, 12, 35))
+    # Leaves
+    pygame.draw.circle(screen, GREEN, (x + 20, y + 20), 22)
+    # Fruits
+    pygame.draw.circle(screen, RED, (x + 12, y + 22), 4)
+    pygame.draw.circle(screen, RED, (x + 25, y + 28), 4)
+    pygame.draw.circle(screen, RED, (x + 30, y + 18), 4)
+
+    for x in range(0, WIDTH, 60):
+        pygame.draw.rect(screen, WHITE, (x + 10, 535, 50, 6))
+
+running = True
+while running:
+    screen.fill(AQUA)
+    pygame.draw.circle(screen,YELLOW, (700, 80), 40)
+    pygame.draw.rect(screen, GRAY, (90, 150, 100, 305))
+    pygame.draw.rect(screen, DARKGREY, (200, 100, 100, 358))
+    pygame.draw.rect(screen, GRAY, (350, 90, 150, 365))
+    pygame.draw.rect(screen, DARKGREY, (550, 90, 100, 365))
+    pygame.draw.rect(screen, (60, 60, 60), (0, 470, WIDTH, 200))
+    pygame.draw.rect(screen, RED, (100, 470, 120, 50))
+    pygame.draw.rect(screen, RED, (130, 450, 60, 50))
+    pygame.draw.rect(screen,BLACK,(115,520,25,15))
+    pygame.draw.rect(screen, BLACK, (190, 520, 20, 15))
+    pygame.draw.rect(screen, WHITE, (600, 470, 120, 50))
+    pygame.draw.rect(screen, WHITE, (635, 450, 60, 60))
+    pygame.draw.rect(screen, BLACK, (680, 520, 23, 15))
+    pygame.draw.rect(screen, BLACK, (615, 520, 20, 20))
+    pygame.draw.rect(screen, YELLOW, (320, 470, 120, 50))
+    pygame.draw.rect(screen, YELLOW, (350, 450, 60, 50))
+    pygame.draw.rect(screen, BLACK, (340, 520, 20, 15))
+    pygame.draw.rect(screen, BLACK, (400, 520, 20, 15))
+    pygame.draw.rect(screen,GREEN,(0,450,130,20))
+    pygame.draw.rect(screen, GREEN, (190, 450, 170, 20))
+    pygame.draw.rect(screen, GREEN, (410, 450, 225, 20))
+    pygame.draw.rect(screen,GREEN,(694,450,110,20))
+
+
+
+
+
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+    draw_fruit_tree(10,387)
+    pygame.display.update()
+pygame.quit()
