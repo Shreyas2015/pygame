@@ -1,0 +1,156 @@
+import pygame
+
+pygame.init()
+
+WIDTH,HEIGHT=800,600
+screen=pygame.display.set_mode((800,600))
+pygame.display.set_caption("Move the car")
+
+GREEN=(34,139,34)
+WHITE=(255,255,255)
+BLACK=(0,0,0)
+RED=(200,50,50)
+GRAY=(200,200,200)
+YELLOW=(255, 255, 0)
+DARKGREY=(169, 169, 169)
+AQUA=(179, 236, 255)
+ORANGE=(242, 154, 12)
+
+
+font_small = pygame.font.SysFont(None, 20)
+font_big = pygame.font.SysFont(None, 48)
+car_x=350
+car_y=400
+car_width=110
+car_height=190
+car_speed=5
+
+car_x2=370
+car_y2=450
+car_width2=60
+car_height2=120
+car_speed2=5
+
+road_width=300
+road_x=(WIDTH - road_width) // 2
+lane_width=10
+lane_height=20
+
+car_width2=100
+car_height2=180
+
+clock=pygame.time.Clock()
+running=True
+
+def draw_arrow_sign(x,y):
+    """Draw a arrow(forward)"""
+    pygame.draw.rect(screen,GRAY,(x+15,y+45,8,55))
+    pygame.draw.rect(screen,GREEN,(x,y,40,45))
+    pygame.draw.rect(screen,WHITE,(x,y,40,45),2)
+
+    pygame.draw.rect(screen,WHITE,(x+15,y+15,10,20))
+    arrow_points=[
+        (x+20,y+10),
+        (x+10,y+18),
+        (x+30,y+18)
+    ]
+    pygame.draw.polygon(screen,WHITE,arrow_points)
+
+def draw_speed_limit2(x,y):
+    """speed limit=(30)"""
+    pygame.draw.rect(screen, GRAY, (x + 15, y + 45, 8, 55))
+    pygame.draw.rect(screen, RED, (x, y, 40, 45))
+    pygame.draw.rect(screen, WHITE, (x, y, 40, 45), 2)
+    screen.blit(font_big.render("30", True, BLACK), (600,405))
+
+
+def draw_speed_limit(x,y):
+    """speed limit=(10)"""
+    pygame.draw.rect(screen, GRAY, (x + 15, y + 45, 8, 55))
+    pygame.draw.rect(screen, YELLOW, (x, y, 40, 45))
+    pygame.draw.rect(screen, WHITE, (x, y, 40, 45), 2)
+    screen.blit(font_small.render("LIMIT", True, BLACK), (800,150))
+    screen.blit(font_big.render("10", True, BLACK), (700,160))
+
+
+def draw_road():
+    """Draw the road with lane markings"""
+    pygame.draw.rect(screen,GRAY,(road_x, 0, road_width,HEIGHT))
+    pygame.draw.rect(screen,WHITE,(road_x,0,5,HEIGHT))
+    pygame.draw.rect(screen,WHITE,(road_x+road_width-5,0,5,HEIGHT))
+
+    """draw the lanes(yellow)"""
+    pygame.draw.rect(screen, DARKGREY, (road_x,0,road_width,HEIGHT))
+    pygame.draw.rect(screen,WHITE,(road_x,0,5,HEIGHT))
+    pygame.draw.rect(screen,WHITE,(road_x + road_width - 5, 0, 5, HEIGHT))
+
+    dash_width=10
+    dash_height=40
+    gap=30
+    center_x=WIDTH // 2 - dash_width // 2
+
+    for y in range(0,HEIGHT,dash_height + gap):
+        pygame.draw.rect(screen,YELLOW,(center_x,y,dash_width,dash_height))
+
+def draw_car(x,y):
+    """Draw the player's car"""
+    pygame.draw.rect(screen,RED,(x,y,car_width,car_height))
+    pygame.draw.rect(screen,YELLOW,(x+10,y+10,90,45))
+    pygame.draw.rect(screen,BLACK,(x-10,y+10,10,60))
+    pygame.draw.rect(screen,BLACK,(x+110,y+10,10,60))
+    pygame.draw.rect(screen,BLACK,(x-5,y--115,10,70))
+    pygame.draw.rect(screen,BLACK,(x+110,y+115,10,70))
+    pygame.draw.rect(screen,ORANGE,(x+1,y-1,10,10))
+    pygame.draw.rect(screen,ORANGE, (x+100,y-1,10,10))
+    pygame.draw.rect(screen,ORANGE,(x+100,y+180, 10,10))
+    pygame.draw.rect(screen,ORANGE,(x+0,y--180,10,10))
+    pygame.draw.rect(screen,GRAY,(x+10,y+70,10,100))
+    pygame.draw.rect(screen,GRAY,(x--90,y--69,10,100))
+    pygame.draw.rect(screen,BLACK,(x+20,y-10,70,10))
+
+
+
+def draw_car2(x,y):
+    """Draw the car(yellow)"""
+    pygame.draw.rect(screen,YELLOW,(x,y,car_width2,car_height2))
+    pygame.draw.rect(screen,AQUA,(x-5,y+100,car_width2+5,40))
+    pygame.draw.rect(screen,BLACK,(x-10,y+20,10,65))
+    pygame.draw.rect(screen, BLACK, (x+100,y--17,10,65))
+    pygame.draw.rect(screen,BLACK,(x-10,y--100,10,50))
+    pygame.draw.rect(screen,BLACK,(x--100,y--100,10,50))
+    pygame.draw.rect(screen,ORANGE,(x-2,y+165,15,15))
+    pygame.draw.rect(screen,ORANGE,(x+90,y+165,15,15))
+    pygame.draw.rect(screen,ORANGE,(x+90,y-5,15,15))
+    pygame.draw.rect(screen,ORANGE,(x-5,y-5,15,15))
+    pygame.draw.rect(screen,RED,(x--20,y+10,60,90))
+    pygame.draw.rect(screen,BLACK,(x--5,y++100,10,40))
+    pygame.draw.rect(screen,BLACK,(x+85,y++100,10,40))
+
+
+
+
+while running:
+    screen.fill(GREEN)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = True
+
+    pygame.draw.rect(screen, WHITE, (20, 10, 80, 140))
+    pygame.draw.rect(screen, BLACK, (20, 10, 80, 140), 2)
+
+    screen.blit(font_small.render("SPEED", True, BLACK), (32, 20))
+    screen.blit(font_small.render("LIMIT", True, BLACK), (34, 40))
+    screen.blit(font_big.render("25", True, BLACK), (35, 65))
+    screen.blit(font_small.render("MPH", True, BLACK), (38, 120))
+
+
+
+    draw_arrow_sign(35,250)
+    draw_speed_limit2(600,400)
+    draw_speed_limit(700,150)
+    draw_road()
+    draw_car2(350,100)
+    draw_car(car_x,car_y)
+    pygame.display.update()
+pygame.quit()
+
