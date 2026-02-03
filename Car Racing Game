@@ -258,7 +258,7 @@ while running:
     if obstacle_y > HEIGHT:
         obstacle_y= -200
         obstacle_x= random.randint(road_x + 10, road_x + road_width - car_width2 - 10)
-        obstacle_speed = random.randint(2,4)
+        obstacle_speed = random.randint(1,1)
 
     pygame.draw.rect(screen, WHITE, (20, 10, 80, 140))
     pygame.draw.rect(screen, BLACK, (20, 10, 80, 140), 2)
@@ -274,7 +274,7 @@ while running:
     draw_speed_limit2(600,400)
     draw_speed_limit(700,150)
     draw_road()
-    draw_car2(330,100)
+    draw_car2(obstacle_x,obstacle_y)
     draw_car(car_x,car_y)
     draw_fruit_tree(100,387)
     draw_fruit_tree2(+600,--90)
