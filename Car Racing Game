@@ -44,15 +44,16 @@ lane_height=20
 traffic_cars=[]
 min_distance_between_cars=350
 
+car_width2=100
+car_height2=180
+obstacle_y=-200
+obstacle_x= random.randint(road_x + 10, road_x + road_width - car_width2 - 10)
+obstacle_speed= 3
 
 def create_traffic():
     x=random.randint(road_x +10 , road_width - car_width2 - 10)
     y=-200
     speed = random.randint(1,3)
-    
-
-car_width2=100
-car_height2=180
 
 clock=pygame.time.Clock()
 running=True
@@ -252,6 +253,13 @@ while running:
     if car_y + car_height > HEIGHT:
         car_y = HEIGHT - car_height
 
+    obstacle_y += obstacle_speed
+
+    if obstacle_y > HEIGHT:
+        obstacle_y= -200
+        obstacle_x= random.randint(road_x + 10, road_x + road_width - car_width2 - 10)
+        obstacle_speed = random.randint(2,4)
+
     pygame.draw.rect(screen, WHITE, (20, 10, 80, 140))
     pygame.draw.rect(screen, BLACK, (20, 10, 80, 140), 2)
 
@@ -266,7 +274,7 @@ while running:
     draw_speed_limit2(600,400)
     draw_speed_limit(700,150)
     draw_road()
-    draw_car2(250,100)
+    draw_car2(330,100)
     draw_car(car_x,car_y)
     draw_fruit_tree(100,387)
     draw_fruit_tree2(+600,--90)
