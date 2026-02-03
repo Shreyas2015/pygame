@@ -1,5 +1,5 @@
 import pygame
-
+import random
 pygame.init()
 
 WIDTH,HEIGHT=800,600
@@ -15,26 +15,41 @@ YELLOW=(255, 255, 0)
 DARKGREY=(169, 169, 169)
 AQUA=(179, 236, 255)
 ORANGE=(242, 154, 12)
+ORANGE22=(252, 177, 3)
+GRAY22=(135, 119, 119)
+YELLOW22=(237, 229, 71)
+GREEN22=(26, 99, 10)
+BUSHES=(40, 184, 15)
 
 
 font_small = pygame.font.SysFont(None, 20)
 font_big = pygame.font.SysFont(None, 48)
 car_x=350
 car_y=400
-car_width=110
-car_height=190
-car_speed=5
+car_width=90
+car_height=160
+car_speed=0.50
 
 car_x2=370
 car_y2=450
 car_width2=60
-car_height2=120
-car_speed2=5
+car_height2=100
+car_speed2=0.50
 
 road_width=300
 road_x=(WIDTH - road_width) // 2
 lane_width=10
 lane_height=20
+
+traffic_cars=[]
+min_distance_between_cars=350
+
+
+def create_traffic():
+    x=random.randint(road_x +10 , road_width - car_width2 - 10)
+    y=-200
+    speed = random.randint(1,3)
+    
 
 car_width2=100
 car_height2=180
@@ -59,7 +74,7 @@ def draw_arrow_sign(x,y):
 def draw_speed_limit2(x,y):
     """speed limit=(30)"""
     pygame.draw.rect(screen, GRAY, (x + 15, y + 45, 8, 55))
-    pygame.draw.rect(screen, RED, (x, y, 40, 45))
+    pygame.draw.rect(screen, WHITE, (x, y, 40, 45))
     pygame.draw.rect(screen, WHITE, (x, y, 40, 45), 2)
     screen.blit(font_big.render("30", True, BLACK), (600,405))
 
@@ -94,21 +109,104 @@ def draw_road():
 
 def draw_car(x,y):
     """Draw the player's car"""
-    pygame.draw.rect(screen,RED,(x,y,car_width,car_height))
-    pygame.draw.rect(screen,YELLOW,(x+10,y+10,90,45))
+    pygame.draw.rect(screen,ORANGE22,(x,y,car_width,car_height))
+    pygame.draw.rect(screen,YELLOW,(x+10,y+10,70,45))
     pygame.draw.rect(screen,BLACK,(x-10,y+10,10,60))
-    pygame.draw.rect(screen,BLACK,(x+110,y+10,10,60))
-    pygame.draw.rect(screen,BLACK,(x-5,y--115,10,70))
-    pygame.draw.rect(screen,BLACK,(x+110,y+115,10,70))
-    pygame.draw.rect(screen,ORANGE,(x+1,y-1,10,10))
-    pygame.draw.rect(screen,ORANGE, (x+100,y-1,10,10))
-    pygame.draw.rect(screen,ORANGE,(x+100,y+180, 10,10))
-    pygame.draw.rect(screen,ORANGE,(x+0,y--180,10,10))
-    pygame.draw.rect(screen,GRAY,(x+10,y+70,10,100))
-    pygame.draw.rect(screen,GRAY,(x--90,y--69,10,100))
-    pygame.draw.rect(screen,BLACK,(x+20,y-10,70,10))
+    pygame.draw.rect(screen,BLACK,(x+90,y+10,10,60))
+    pygame.draw.rect(screen,BLACK,(x+90,y+115,10,40))
+    pygame.draw.rect(screen,BLACK,(x-10,y+115,10,40))
+    pygame.draw.rect(screen,YELLOW22,(x-1,y-1,10,10))
+    pygame.draw.rect(screen,YELLOW22, (x+80,y-1,10,10))
+    pygame.draw.rect(screen,YELLOW22,(x+80,y+150, 10,10))
+    pygame.draw.rect(screen,YELLOW22,(x+0,y+150,10,10))
+    pygame.draw.rect(screen,BLACK,(x-0,y-10,90,10))
+
+def draw_fruit_tree(x, y):
+    pygame.draw.rect(screen, (101, 67, 33), (x + 15, y + 35, 15, 75))
+    pygame.draw.circle(screen, GREEN, (x + 20, y + 20), 30)
+    pygame.draw.circle(screen, GREEN, (x + 30, y - 15), 38)
+    pygame.draw.circle(screen, GREEN, (x - 10, y - 10), 24)
+    pygame.draw.circle(screen, RED, (x - 12, y - 12), 4)
+    pygame.draw.circle(screen, RED, (x + 35, y - 28), 5)
+    pygame.draw.circle(screen, RED, (x + 50, y - 18), 3)
+    pygame.draw.circle(screen, RED, (x + 12, y + 22), 4)
+    pygame.draw.circle(screen, RED, (x + 25, y + 28), 5)
+    pygame.draw.circle(screen, RED, (x + 30, y + 18), 3)
+    pygame.draw.circle(screen, RED, (x + 12, y + 22), 4)
+    pygame.draw.circle(screen, RED, (x + 25, y + 28), 3)
+    pygame.draw.circle(screen, RED, (x + 30, y + 18), 4)
 
 
+def draw_fruit_tree2(x, y):
+    pygame.draw.rect(screen, (101, 67, 33), (x + 15, y + 35, 15, 75))
+    pygame.draw.circle(screen, GREEN, (x + 20, y + 20), 30)
+    pygame.draw.circle(screen, GREEN, (x + 30, y - 15), 38)
+    pygame.draw.circle(screen, GREEN, (x - 10, y - 10), 24)
+    pygame.draw.circle(screen, RED, (x - 12, y - 12), 4)
+    pygame.draw.circle(screen, RED, (x + 35, y - 28), 5)
+    pygame.draw.circle(screen, RED, (x + 50, y - 18), 3)
+    pygame.draw.circle(screen, RED, (x + 12, y + 22), 4)
+    pygame.draw.circle(screen, RED, (x + 25, y + 28), 5)
+    pygame.draw.circle(screen, RED, (x + 30, y + 18), 3)
+    pygame.draw.circle(screen, RED, (x + 12, y + 22), 4)
+    pygame.draw.circle(screen, RED, (x + 25, y + 28), 3)
+    pygame.draw.circle(screen, RED, (x + 30, y + 18), 4)
+
+def draw_fruit_tree3(x, y):
+    pygame.draw.rect(screen, (101, 67, 33), (x + 15, y + 35, 15, 75))
+    pygame.draw.circle(screen, GREEN, (x + 20, y + 20), 30)
+    pygame.draw.circle(screen, GREEN, (x + 30, y - 15), 38)
+    pygame.draw.circle(screen, GREEN, (x - 10, y - 10), 24)
+    pygame.draw.circle(screen, RED, (x - 12, y - 12), 4)
+    pygame.draw.circle(screen, RED, (x + 35, y - 28), 5)
+    pygame.draw.circle(screen, RED, (x + 50, y - 18), 3)
+    pygame.draw.circle(screen, RED, (x + 12, y + 22), 4)
+    pygame.draw.circle(screen, RED, (x + 25, y + 28), 5)
+    pygame.draw.circle(screen, RED, (x + 30, y + 18), 3)
+    pygame.draw.circle(screen, RED, (x + 12, y + 22), 4)
+    pygame.draw.circle(screen, RED, (x + 25, y + 28), 3)
+    pygame.draw.circle(screen, RED, (x + 30, y + 18), 4)
+
+def draw_fruit_tree4(x, y):
+    pygame.draw.rect(screen, (101, 67, 33), (x + 15, y + 35, 15, 75))
+    pygame.draw.circle(screen, GREEN, (x + 20, y + 20), 30)
+    pygame.draw.circle(screen, GREEN, (x + 30, y - 15), 38)
+    pygame.draw.circle(screen, GREEN, (x - 10, y - 10), 24)
+    pygame.draw.circle(screen, RED, (x - 12, y - 12), 4)
+    pygame.draw.circle(screen, RED, (x + 35, y - 28), 5)
+    pygame.draw.circle(screen, RED, (x + 50, y - 18), 3)
+    pygame.draw.circle(screen, RED, (x + 12, y + 22), 4)
+    pygame.draw.circle(screen, RED, (x + 25, y + 28), 5)
+    pygame.draw.circle(screen, RED, (x + 30, y + 18), 3)
+    pygame.draw.circle(screen, RED, (x + 12, y + 22), 4)
+    pygame.draw.circle(screen, RED, (x + 25, y + 28), 3)
+    pygame.draw.circle(screen, RED, (x + 30, y + 18), 4)
+
+def draw_bushes(x,y):
+    pygame.draw.circle(screen,BUSHES,(x+26,y+96),20)
+    pygame.draw.circle(screen, BUSHES, (x - 6, y + 96), 24)
+    pygame.draw.circle(screen, BUSHES, (x + 62, y + 100), 30)
+    pygame.draw.circle(screen, BUSHES, (x - 36, y + 96), 30)
+    pygame.draw.circle(screen, BUSHES, (x - 70, y + 100), 30)
+    pygame.draw.circle(screen, BUSHES, (x + 106, y + 96), 30)
+    pygame.draw.circle(screen, BUSHES, (x + 130, y + 100), 30)
+    pygame.draw.rect(screen,BUSHES,(x-100,y+110,250,30))
+
+def draw_bushes2(x,y):
+    pygame.draw.circle(screen,BUSHES,(x+26,y+96),20)
+    pygame.draw.circle(screen, BUSHES, (x - 6, y + 96), 24)
+    pygame.draw.circle(screen, BUSHES, (x + 62, y + 100), 30)
+    pygame.draw.circle(screen, BUSHES, (x - 36, y + 96), 30)
+    pygame.draw.circle(screen, BUSHES, (x - 70, y + 100), 30)
+    pygame.draw.circle(screen, BUSHES, (x + 106, y + 96), 30)
+    pygame.draw.circle(screen, BUSHES, (x + 130, y + 100), 30)
+    pygame.draw.rect(screen,BUSHES,(x-100,y+110,250,30))
+
+def draw_bushes3(x,y):
+    pygame.draw.circle(screen, BUSHES, (x + 26, y + 96), 20)
+    pygame.draw.circle(screen, BUSHES, (x - 6, y + 96), 24)
+    pygame.draw.circle(screen, BUSHES, (x + 62, y + 100), 30)
+    pygame.draw.rect(screen, BUSHES, (x +-25, y + 110, 119, 30))
 
 def draw_car2(x,y):
     """Draw the car(yellow)"""
@@ -130,10 +228,29 @@ def draw_car2(x,y):
 
 
 while running:
-    screen.fill(GREEN)
+    screen.fill(GREEN22)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = True
+            running = False
+
+    keys=pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        car_x -= car_speed
+    if keys[pygame.K_RIGHT]:
+        car_x += car_speed
+    if keys[pygame.K_UP]:
+        car_y -= car_speed
+    if keys[pygame.K_DOWN]:
+        car_y += car_speed
+
+    if car_x < road_x:
+        car_x = road_x
+    if car_x + car_width > road_x + road_width:
+        car_x=road_x + road_width - car_width
+    if car_y < 0:
+        car_y = 0
+    if car_y + car_height > HEIGHT:
+        car_y = HEIGHT - car_height
 
     pygame.draw.rect(screen, WHITE, (20, 10, 80, 140))
     pygame.draw.rect(screen, BLACK, (20, 10, 80, 140), 2)
@@ -149,8 +266,15 @@ while running:
     draw_speed_limit2(600,400)
     draw_speed_limit(700,150)
     draw_road()
-    draw_car2(350,100)
+    draw_car2(250,100)
     draw_car(car_x,car_y)
+    draw_fruit_tree(100,387)
+    draw_fruit_tree2(+600,--90)
+    draw_fruit_tree3(+700,+400)
+    draw_fruit_tree4(150,147)
+    draw_bushes(100,387)
+    draw_bushes2(+650,+400)
+    draw_bushes3(+600,--90)
     pygame.display.update()
 pygame.quit()
 
