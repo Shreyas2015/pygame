@@ -1,0 +1,36 @@
+import pygame
+import random
+
+pygame.init()
+width,height=600,400
+screen = pygame.display.set_mode((width,height))
+pygame.display.set_caption("Raindrop")
+clock=pygame.time.Clock()
+
+raindrops= []
+for i in range(1500):
+    x=random.randint(0,width)
+    y=random.randint(0,height)
+    raindrops.append([x,y])
+
+running = True
+while running:
+    screen.fill((30,30,30))
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    for drop in raindrops:
+        pygame.draw.line(screen,(0,150,255),(drop[0],drop[1]),(drop[0],drop[1] + 10),2)
+        drop[1]+=5
+
+        if drop[1] > height:
+            drop[1]=0
+            drop[0]=random.randint(0,width)
+
+    pygame.display.update()
+    clock.tick(60)
+
+pygame.quit()
+
