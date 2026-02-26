@@ -1,0 +1,81 @@
+from PIL.ImageOps import scale
+from PIL.ImagePalette import random
+from ursina import *
+from ursina.prefabs.first_person_controller import FirstPersonController
+
+app= Ursina()
+ground= Entity(
+    model="plane",
+    scale=100,
+    texture="white_cube",
+    texture_scale=(100,50),
+    collider="box"
+
+)
+sky=Sky()
+
+road= Entity(
+    model="cube",
+    scale=(100,0.1,5),
+    color=color.dark_gray,
+    position=(0,0,0)
+)
+
+for i in range(-10,11,2):
+    line=Entity(
+        model="cube",
+        scale=(1.5,0.15,0.2),
+        color=color.white,
+        position=(i * 5,0.1,0)
+    )
+
+building_colors=[color.red,color.brown,color.white,color.black,color.blue,color.orange]
+
+for i in range(5):
+    building= Entity(
+        model="cube",
+        scale=(4, random.randint(3,8),4),
+        color=random.choice(building_colors),
+        position=(i * 8 - 16, 0, -8),
+        collider="box"
+    )
+
+for i in range(5):
+    building = Entity(
+        model="cube",
+        scale=(4, random.randint(3, 8), 4),
+        color=random.choice(building_colors),
+        position=(i * 8 - 16, 0, 8),
+        collider="box"
+
+    )
+
+circle1= Entity(
+    model="sphere",
+    scale=1.5,
+    color=color.olive,
+    position=(-10,1,0),
+    collider="box"
+)
+
+circle2= Entity(
+    model="sphere",
+    scale=1.5,
+    color=color.blue,
+    position=(0,1,0),
+    collider="box"
+)
+
+circle3= Entity(
+    model="sphere",
+    scale=1.5,
+    color=color.orange,
+    position=(10,1,0),
+    collider="box"
+)
+
+
+
+player= FirstPersonController(position=(0,1,0))
+mouse.locked= True
+app.run()
