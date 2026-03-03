@@ -1,12 +1,11 @@
-from PIL.ImageOps import scale
-from PIL.ImagePalette import random
-from ursina import *
+
 from ursina.prefabs.first_person_controller import FirstPersonController
+from ursina import *
 
 app= Ursina()
 ground= Entity(
     model="plane",
-    scale=100,
+    scale=300,
     texture="white_cube",
     texture_scale=(100,50),
     collider="box"
@@ -34,7 +33,7 @@ building_colors=[color.red,color.brown,color.white,color.black,color.blue,color.
 for i in range(5):
     building= Entity(
         model="cube",
-        scale=(4, random.randint(3,8),4),
+        scale=(4, random.randint(2,4),2),
         color=random.choice(building_colors),
         position=(i * 8 - 16, 0, -8),
         collider="box"
@@ -43,7 +42,7 @@ for i in range(5):
 for i in range(5):
     building = Entity(
         model="cube",
-        scale=(4, random.randint(3, 8), 4),
+        scale=(4, random.randint(2, 4), 2),
         color=random.choice(building_colors),
         position=(i * 8 - 16, 0, 8),
         collider="box"
@@ -74,7 +73,108 @@ circle3= Entity(
     collider="box"
 )
 
+def create_tree(x,z):
+    trunk=Entity(
+        model="cube",
+        scale=(0.8,3,0.8),
+        color=color.brown,
+        position=(x,1.5,z),
+        collider="box"
+    )
+    leaves=Entity(
+        model="sphere",
+        scale=3,
+        color=color.green,
+        position=(x,4,z),
+        collider="box"
+    )
+create_tree(-20,-12)
+create_tree(-10,-10)
+create_tree(10,-12)
+create_tree(20,-10)
 
+create_tree(-20,12)
+create_tree(-10,10)
+create_tree(10,12)
+create_tree(20,10)
+
+for i in range(4):
+    small_building=Entity(
+        model="cube",
+        scale=(2,random.randint(2,4),2),
+        color=color.yellow,
+        position=(i*8-12,0,-8),
+        collider="box"
+    )
+
+for i in range(4):
+    small_building=Entity(
+        model="cube",
+        scale=(2,random.randint(2,4),2),
+        color=color.yellow,
+        position=(i*8-12,0,8),
+        collider="box"
+    )
+
+def create_stairs(x,y,z,steps=100):
+    for i in range(steps):
+        steps=Entity(
+            model="cube",
+            scale=(2,0.5,1.5),
+            color=color.white,
+            position=(
+                x,
+                y+i*1.5,
+                z+i*1.5
+            ),
+            collider="box"
+        )
+create_stairs(25,0,6)
+
+def create_stairs(x,y,z,steps=100):
+    for i in range(steps):
+        steps=Entity(
+            model="cube",
+            scale=(2,0.5,1.5),
+            color=color.white,
+            position=(
+                x,
+                y+i*1.5,
+                z+i*1.5
+            ),
+            collider="box"
+        )
+create_stairs(40,0,6)
+
+def create_stairs(x,y,z,steps=100):
+    for i in range(steps):
+        steps=Entity(
+            model="cube",
+            scale=(2,0.5,1.5),
+            color=color.white,
+            position=(
+                x,
+                y+i*1.5,
+                z+i*1.5
+            ),
+            collider="box"
+        )
+create_stairs(60,0,6)
+
+def create_stairs(x,y,z,steps=100):
+    for i in range(steps):
+        steps=Entity(
+            model="cube",
+            scale=(2,0.5,1.5),
+            color=color.white,
+            position=(
+                x,
+                y+i*2,
+                z+i*1.5
+            ),
+            collider="box"
+        )
+create_stairs(30,0,-30)
 
 player= FirstPersonController(position=(0,1,0))
 mouse.locked= True
