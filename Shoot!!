@@ -1,0 +1,30 @@
+from ursina.prefabs.first_person_controller import FirstPersonController
+from ursina import *
+import random
+
+app= Ursina()
+score=0
+health=3
+game_over=False
+enemies=[]
+
+ground= Entity(
+    model="plane",
+    scale=(40,1,40),
+    color=color.lime,
+    texture="white cube",
+    texture_scale=(40,40),
+    collider="box"
+)
+Sky=Sky()
+# x,y,z=0,2,20
+# width,height,depth=40,4,1
+Wall_data=[
+    (0,2,20,40,4,1),
+    (0,2,-20,40,4,1),
+    (20,2,0,1,4,40),
+    (-20,2,0,1,4,40),
+]
+
+for wx,wy,wz,sx,sy,sz in Wall_data:
+    Entity(model="cube",position=(wx,wy,wz),scale=(sx,sy,sz),color=color.blue)
