@@ -1,0 +1,231 @@
+import timeit
+
+from ursina import *
+from ursina.prefabs.first_person_controller import FirstPersonController
+import random
+
+app= Ursina()
+score=0
+health=3
+game_over=False
+enemies=[]
+
+ground= Entity(
+    model="plane",
+    scale=(40,1,40),
+    color=color.blue,
+    texture="white_cube",
+    texture_scale=(40,40),
+    collider="box",
+)
+Sky=Sky()
+# x,y,z=0,2,20
+# width,height,depth=40,4,1
+Wall_data=[
+    (0,2,20,40,4,1),
+    (0,2,-20,40,4,1),
+    (20,2,0,1,4,40),
+    (-20,2,0,1,4,40),
+
+]
+
+for wx,wy,wz,sx,sy,sz in Wall_data:
+    Entity(model="cube",position=(wx,wy,wz),scale=(sx,sy,sz),color=color.dark_gray,collider="box",)
+
+for _ in range(12):
+    Entity(
+        model="cube",
+        position=(random.uniform(-15,15),0.5,random.uniform(-15,15)),
+        scale=(1.5,1.5,1.5),
+        color=color.light_gray,
+        texture="white_cube",
+        collider="box"
+    )
+player= FirstPersonController(
+    position=(0,1,0),
+    speed=8,
+    mouse_locked=True,
+)
+app.run()
+player.cursor.visible=False
+
+crosshair=Entity(
+    parent=camera.ui,
+    model="quad",
+    color=color.white,
+    scale=0.02
+)
+
+gun=Entity(
+    parent=camera,
+    model="cube",
+    scale=(0.15,0.1,0.5),
+    position=(0.4,-0.3,0.8),
+    color=color.dark_gray
+)
+
+score_text=Text(
+    text="score:0",
+    position=(-0.85,0.45),
+    scale=2,
+    color=color.white
+)
+
+health_text=Text(
+    text="❤️ ❤️ ❤️",
+    position=(-0.85,0.38),
+    scale=2,
+    color=color.red
+)
+
+ammo_text=Text(
+    text="Ammo:10",
+    position=(0.6,-0.43),
+    scale=3,
+    color=color.dark_gray
+)
+
+message_text=Text(
+    text=" ",
+    origin=(0,0),
+    scale=3,
+    color=color.orange
+)
+ammo=10
+
+def update_ui():
+    score_text.text=f"Score:{score}"
+    hearts="❤"*health
+    health_text.text=hearts if health>0 else "Dead"
+
+def spawn_enemy():
+    x=random.choice([-1,1])*random.uniform(5,18)
+    z=random.choice([-1,1])*random.uniform(5,18)
+    enemy=Entity(
+        model="cube",
+        position=(x,1,z),
+        scale=(1,2,1),
+        color=color.red,
+        collider="box"
+    )
+    enemy.speed=random.uniform(1.5,3.5)
+    enemy.hp=10
+    enemies.append(enemy)
+
+for _ in range(6):
+    spawn_enemy()
+
+shoot_cooldown=0
+def shoot():
+    global ammo,score,shoot_cooldown
+    if game_over or ammo <=0 or shoot_cooldown >0:
+        return
+    ammo-=1
+    shoot_cooldown=0.25
+    update_ui()
+
+    flash=Entity(
+        parent=camera,
+        model="quad",
+        color=color.yellow,
+        scale=0.08,
+        position=(0.4,-0.25,0.6)
+    )
+    destroy(flash,delay=0.05)
+
+ray=raycast(camera.world_rotation,camera.forward,distance=50,ignore=[player])
+if ray.hit:
+    hit_entity=ray.entity
+    if hit_entity in enemies:
+        hit_vfx=Entity(
+            model="sphere",
+            scale=0.3,
+            position=ray.world_point,
+            color=color.orange
+        )
+        destroy(hit_vfx,delay=0.1)
+
+        hit_entity.hp-=1
+        if hit_entity.hp<=0:
+            enemies.remove(hit_entity)
+            destroy(hit_entity)
+            score+=10
+            update_ui()
+            invoke(spawn_enemy(),delay=1.5)
+
+    if ammo<=0:
+      invoke(reload,delay=2)
+      message_text.text="Reloading...."
+      invoke(clear_message,delay=2)
+
+def reload():
+    global ammo
+    ammo=10
+    update_ui()
+
+def clear_message():
+    message_text.text=" "
+
+def update():
+    global health,game_over,shoot_cooldown
+
+    if game_over:
+        return
+
+    if held_keys["left mouse"] or held_keys["space"]:
+        shoot()
+
+    if shoot_cooldown>0:
+        shoot_cooldown-=time.dt
+
+    for enemy in enemies[:]:
+        direction=player.position-enemy.position
+        direction.y=0
+        if direction.length()>0:
+            enemy.position += direction.normalized()*enemy.speed*time.dt
+
+        if distance(enemy.position,player.position)<1.5:
+            health-=1
+            enemies.remove(enemy)
+            destroy(enemy)
+            update_ui()
+
+            if health<=0:
+                game_over=True
+                message_text.text=f"GAME OVER!\nScore:{score}\nPress R to restart"
+                mouse.locked=False
+            else:
+                message_text.text="Ouch!"
+                invoke(clear_message,delay=1)
+
+            break
+
+    if player.y<0:
+        player.y=0
+
+def input(key):
+    global score,health,ammo,game_over,enemies
+    if key=="r"and game_over:
+        for e in enemies[:]:
+            destroy(e)
+        enemies.clear()
+        score=0
+        health=3
+        ammo=10
+        game_over=False
+        player.position=(0,1,0)
+        message_text.text=" "
+        update_ui()
+
+        for _ in range(6):
+            spawn_enemy()
+
+    if key=="escape":
+        application.quit()
+
+update_ui()
+window.title="Beginner FPS - Ursina"
+window.borderless=False
+
+update_ui()
+app.run()
