@@ -1,0 +1,160 @@
+from ursina import *
+from ursina.prefabs.first_person_controller import FirstPersonController
+import random
+
+app = Ursina()
+
+# PLAYER
+player = FirstPersonController()
+player.speed = 6
+player.health = 100
+
+# GROUND
+ground = Entity(model='plane', scale=100, texture='white_cube',
+                texture_scale=(100,100), collider='box')
+
+# BUILDINGS
+for i in range(20):
+    Entity(model='cube',
+           scale=(3, random.randint(5,10), 3),
+           position=(random.randint(-30,30),2,random.randint(-30,30)),
+           color=color.gray,
+           collider='box')
+
+# VARIABLES
+bullets = []
+enemies = []
+shoot_timer = 0
+stamina = 100
+
+# WEAPONS
+weapons = {
+    "Pistol": {"damage": 40, "cooldown": 0.2},
+    "Rifle": {"damage": 25, "cooldown": 0.05},
+    "Rocket": {"damage": 100, "cooldown": 0.8}
+}
+current_weapon = "Rifle"
+
+# ENEMY SPAWN
+def spawn_enemy():
+    e = Entity(model='cube',
+               color=color.red,
+               scale=2,
+               position=(random.randint(-20,20),1,random.randint(-20,20)),
+               collider='box')
+    e.health = 100
+    enemies.append(e)
+
+for i in range(10):
+    spawn_enemy()
+
+# SHOOT FUNCTION
+def shoot():
+    global shoot_timer
+
+    if shoot_timer > 0:
+        return
+
+    weapon = weapons[current_weapon]
+
+    b = Entity(model='sphere',
+               scale=0.3,
+               color=color.yellow,
+               position=player.position + Vec3(0,1.5,0))
+
+    b.direction = camera.forward
+    b.damage = weapon["damage"]
+    b.type = current_weapon
+
+    bullets.append(b)
+    shoot_timer = weapon["cooldown"]
+
+# INPUT
+def input(key):
+    global current_weapon
+
+    if key == 'left mouse down':
+        shoot()
+
+    if key == '1':
+        current_weapon = "Pistol"
+    if key == '2':
+        current_weapon = "Rifle"
+    if key == '3':
+        current_weapon = "Rocket"
+
+# UPDATE LOOP
+def update():
+    global shoot_timer, stamina
+
+    shoot_timer -= time.dt
+
+    # SPRINT
+    if held_keys['shift'] and stamina > 0:
+        player.speed = 10
+        stamina -= time.dt * 20
+    else:
+        player.speed = 6
+        stamina += time.dt * 10
+
+    stamina = clamp(stamina, 0, 100)
+
+    # CLIMBING
+    if held_keys['w']:
+        hit = raycast(player.position, player.forward, distance=1)
+        if hit.hit:
+            player.y += 5 * time.dt
+
+    # BULLETS (FIXED HIT SYSTEM)
+    for b in bullets[:]:
+        b.position += b.direction * time.dt * 30
+
+        for e in enemies[:]:
+            if distance(b.position, e.position) < 2:   # 🔥 FIXED HIT RANGE
+
+                print("HIT!")  # debug
+
+                # DAMAGE
+                if b.type != "Rocket":
+                    e.health -= b.damage
+                else:
+                    # EXPLOSION
+                    explosion = Entity(model='sphere',
+                                       color=color.red,
+                                       position=b.position)
+                    explosion.animate_scale(5, duration=0.3)
+                    destroy(explosion, delay=0.3)
+
+                    for enemy in enemies:
+                        if distance(enemy.position, b.position) < 5:
+                            enemy.health -= 100
+
+                destroy(b)
+                bullets.remove(b)
+
+                # REMOVE DEAD ENEMIES
+                for enemy in enemies[:]:
+                    if enemy.health <= 0:
+                        destroy(enemy)
+                        enemies.remove(enemy)
+
+                break
+
+        # REMOVE FAR BULLETS
+        if distance(b.position, player.position) > 50:
+            destroy(b)
+            bullets.remove(b)
+
+    # ENEMY AI
+    for e in enemies:
+        e.look_at(player)
+        e.position += e.forward * time.dt * 2
+
+        if distance(e.position, player.position) < 2:
+            player.health -= time.dt * 10
+
+    # HEALTH REGEN
+    player.health += time.dt * 2
+    player.health = clamp(player.health, 0, 100)
+
+app.run()
