@@ -1,0 +1,95 @@
+import pygame
+pygame.init()
+WIDTH, HEIGHT = 800, 600
+Screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("The view")
+blue = (50, 183, 240)
+black = (0, 0, 0)
+green = (3, 115, 15)
+brown = (36, 8, 8)
+red = (255, 0, 0)
+yellow=(228, 240, 14)
+ro=(7, 37, 232)
+ha=(8, 64, 32)
+orange=(250, 206, 10)
+bird_x = 200
+bird_y = HEIGHT // 5
+bird_x2 = 400
+bird_y2 = HEIGHT // 4
+cloud_x=500
+cloud_y=100
+car_x = 350
+car_y = 250
+speed = 5
+def draw_bird(surface, x, y):
+    pygame.draw.circle(surface, (0, 0, 0), (x, y), 8)  # black body
+    pygame.draw.polygon(surface, (0, 0, 0), [
+        (x - 5, y),
+        (x - 15, y - 5),
+        (x - 15, y + 5)
+    ])
+    pygame.draw.polygon(surface, (255, 165, 0), [
+        (x + 8, y),
+        (x + 14, y - 3),
+        (x + 14, y + 3)
+    ])
+def draw_bird2(surface, x, y):
+    pygame.draw.circle(surface, (0, 0, 0), (x, y), 8)  # black body
+    pygame.draw.polygon(surface, (0, 0, 0), [
+        (x - 5, y),
+        (x - 15, y - 5),
+        (x - 15, y + 5)
+    ])
+    pygame.draw.polygon(surface, (255, 165, 0), [
+        (x + 8, y),
+        (x + 14, y - 3),
+        (x + 14, y + 3)
+    ])
+cloud_x+=2
+if cloud_x > WIDTH:
+    cloud_x= -80
+    if bird_x > WIDTH + 30:
+        bird_x = -3
+    if bird_x > WIDTH + 100:
+        bird_x = -3
+    pygame.draw.circle(Screen,(255,255,0),(cloud_x-40,cloud_y-20),45)
+running=True
+while running:
+    Screen.fill(blue)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_RIGHT]:
+        car_y -= speed
+    if keys[pygame.K_LEFT]:
+        car_y += speed
+    pygame.draw.circle(Screen, (255, 255, 255), (cloud_x, cloud_y), 25)
+    pygame.draw.circle(Screen, (255, 255, 255), (cloud_x + 30, cloud_y - 10), 35)
+    pygame.draw.circle(Screen, (255, 255, 255), (cloud_x + 60, cloud_y), 15)
+    pygame.draw.rect(Screen, green, (0, 400, 900, 300))
+    pygame.draw.circle(Screen, yellow, (700, 100), 60)
+    pygame.draw.rect(Screen, brown, (750, 410, 20, 100))
+    pygame.draw.circle(Screen, ha, (750, 370), 50)
+    pygame.draw.rect(Screen, brown, (50, 410, 20, 100))
+    pygame.draw.circle(Screen, ha, (50, 370), 50)
+    pygame.draw.rect(Screen, yellow, (300, 250, 300, 150))
+    pygame.draw.rect(Screen,red,(100,400,200,100))
+    pygame.draw.rect(Screen, ro, (100, 400, 100, 100))
+    pygame.draw.rect(Screen, black, (100, 500, 20, 20))
+    pygame.draw.rect(Screen, black, (280, 500, 20, 20))
+    pygame.draw.rect(Screen, orange, (280, 400, 20, 40))
+    pygame.draw.rect(Screen, orange, (100, 400, 20, 40))
+    pygame.draw.rect(Screen, brown, (500, 340, 40, 60))
+    pygame.draw.rect(Screen, blue, (360, 310, 90, 60))
+    pygame.draw.rect(Screen, (255,255,255), (400, 310, 10, 60))
+    pygame.draw.rect(Screen, (255, 255, 255), (360, 340, 90, 10))
+    pygame.draw.circle(Screen, brown, (520, 300), 20)
+    pygame.draw.circle(Screen, (255,255,255), (530, 370), 3)
+    pygame.draw.rect(Screen, brown, (290, 250, 10, 150))
+    pygame.draw.rect(Screen, brown, (600, 250, 10, 150))
+    pygame.draw.rect(Screen,brown,(300,200,300,50))
+    draw_bird(Screen, bird_x, bird_y)
+    draw_bird2(Screen, bird_x2, bird_y2)
+    pygame.display.update()
+pygame.quit()
