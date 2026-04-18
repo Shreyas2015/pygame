@@ -1,0 +1,17 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 30: Falling Objects"
+
+player = Entity(model='cube', y=-3)
+
+objects = []
+
+def update():
+    if random.randint(1,30) == 1:
+        objects.append(Entity(model='cube', position=(random.randint(-5,5),5,0)))
+
+    for o in objects:
+        o.y -= 0.05
+
+app.run()
