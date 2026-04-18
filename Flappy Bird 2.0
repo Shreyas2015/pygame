@@ -1,0 +1,67 @@
+from ursina import *
+import random
+
+app = Ursina(title="Flappy Bird")
+window.color = color.rgb(80,180,255)
+camera.orthographic = True
+camera.fov = 8
+camera.position = (0,0,-20)
+HW = camera.fov * window.aspect_ratio; HH = camera.fov
+
+GRAV=-18; FLAP=7; GAP=3.0; PIPE_W=0.8; PIPE_SPD=3.5
+
+bird=Entity(model="circle",color=color.rgb(255,220,60),scale=0.5,position=(-2,0,0))
+ground=Entity(model="quad",color=color.rgb(100,200,60),scale=(HW*2,1,1),position=(0,-HH+0.5,0))
+pipes=[]; bvy=0; score_val=0; state="idle"; ptimer=0
+
+score_txt=Text("0",position=(-0.04,0.43),scale=2.5,color=color.white)
+title_txt=Text("FLAPPY BIRD\nclick / space to flap",position=(-0.24,0.1),scale=2,color=color.rgb(255,240,80))
+over_txt=Text("",position=(-0.24,0.05),scale=1.8,color=color.rgb(255,80,80))
+
+def spawn_pipe():
+    gap_y=random.uniform(-HH+2.5,HH-2.5)
+    top=Entity(model="quad",color=color.rgb(60,190,60),scale=(PIPE_W,HH*2,1),
+               position=(HW+0.5,gap_y+GAP/2+HH,0.1))
+    bot=Entity(model="quad",color=color.rgb(60,190,60),scale=(PIPE_W,HH*2,1),
+               position=(HW+0.5,gap_y-GAP/2-HH,0.1))
+    top.gap_y=bot.gap_y=gap_y; top.scored=bot.scored=False
+    top.pair=bot; bot.pair=top
+    pipes.extend([top,bot])
+
+def reset():
+    global bvy,score_val,state,ptimer
+    for p in pipes: destroy(p); pipes.clear()
+    bird.position=(-2,0,0); bvy=0; score_val=0; ptimer=0
+    score_txt.text="0"; title_txt.visible=False; over_txt.text=""; state="playing"
+
+def input(key):
+    global bvy,state
+    if key in("space","left mouse down"):
+        if state=="idle": reset()
+        elif state=="playing": bvy=FLAP
+        elif state=="over": reset()
+
+def update():
+    global bvy,score_val,state,ptimer
+    if state!="playing": return
+    bvy+=GRAV*time.dt; bird.y+=bvy*time.dt
+
+    ptimer+=time.dt
+    if ptimer>=1.8: ptimer=0; spawn_pipe()
+
+    for p in pipes[:]:
+        p.x-=PIPE_SPD*time.dt
+        if p.x<-HW-1: destroy(p); pipes.remove(p); continue
+        if not p.scored and p.x<bird.x:
+            p.scored=True
+            if hasattr(p,"pair") and not p.pair.scored:
+                score_val+=1; score_txt.text=str(score_val)
+        # collision
+        if abs(p.x-bird.x)<PIPE_W/2+0.22:
+            if not(p.gap_y-GAP/2+0.22<bird.y<p.gap_y+GAP/2-0.22):
+                state="over"; over_txt.text=f"GAME OVER\nScore:{score_val}\nclick retry"
+
+    if bird.y<-HH+0.8 or bird.y>HH-0.4:
+        state="over"; over_txt.text=f"GAME OVER\nScore:{score_val}\nclick retry"
+
+app.run()
