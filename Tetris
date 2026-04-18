@@ -1,0 +1,125 @@
+from ursina import *
+import random, copy
+
+app = Ursina(title="Tetris")
+window.color = color.rgb(12,12,24)
+camera.orthographic = True
+COLS2,ROWS2=10,20; CELL2=0.85
+camera.fov = ROWS2*CELL2/2+0.5
+camera.position = (0,0,-30)
+HH=camera.fov; HW=HH*window.aspect_ratio
+
+def gpos(c,r): return Vec3((c-COLS2/2+0.5)*CELL2,(ROWS2/2-r-0.5)*CELL2,0)
+
+SHAPES=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],
+        [[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]],[[0,1,1],[1,1,0]],[[1,1,0],[0,1,1]]]
+TCOLORS=[color.rgb(0,220,220),color.rgb(220,220,0),color.rgb(180,0,220),
+         color.rgb(0,80,220),color.rgb(220,120,0),color.rgb(0,220,0),color.rgb(220,0,0)]
+
+board=[[None]*COLS2 for _ in range(ROWS2)]
+board_ents=[[None]*COLS2 for _ in range(ROWS2)]
+piece_ents=[]; px=3; py=0; pshape=[]; pcolor=color.white
+score_val=0; level=1; lines_val=0; state="idle"; fall_t=0
+
+score_txt=Text("Score:0\nLevel:1\nLines:0",position=(0.52,0.3),scale=1.5,color=color.rgb(150,180,220))
+title_txt=Text("TETRIS\nclick to start\n←→ move  ↑ rotate\n↓ soft  Space hard drop",position=(-0.3,0.1),scale=1.5,color=color.rgb(0,220,220))
+over_txt =Text("",position=(-0.18,0.05),scale=2,color=color.rgb(255,80,80))
+
+def rand_piece():
+    idx=random.randint(0,6)
+    return copy.deepcopy(SHAPES[idx]),TCOLORS[idx]
+
+def rotate2(s): return [list(r) for r in zip(*s[::-1])]
+
+def fits2(shp,ox,oy):
+    for r,row in enumerate(shp):
+        for c,v in enumerate(row):
+            if v:
+                nx,ny=px+c+ox,py+r+oy
+                if nx<0 or nx>=COLS2 or ny>=ROWS2: return False
+                if ny>=0 and board[ny][nx]: return False
+    return True
+
+def spawn():
+    global px,py,pshape,pcolor
+    pshape,pcolor=rand_piece(); px=3; py=0
+    if not fits2(pshape,0,0): return False
+    draw_piece(); return True
+
+def draw_piece():
+    for e in piece_ents: destroy(e); piece_ents.clear()
+    for r,row in enumerate(pshape):
+        for c,v in enumerate(row):
+            if v and py+r>=0:
+                e=Entity(model="quad",color=pcolor,scale=CELL2*0.92,position=gpos(px+c,py+r),z=-0.1)
+                piece_ents.append(e)
+
+def place2():
+    global score_val,lines_val,level
+    for r,row in enumerate(pshape):
+        for c,v in enumerate(row):
+            if v and 0<=py+r<ROWS2:
+                board[py+r][px+c]=pcolor
+                e=Entity(model="quad",color=pcolor,scale=CELL2*0.92,position=gpos(px+c,py+r))
+                board_ents[py+r][px+c]=e
+    # clear lines
+    cleared=0
+    for r in range(ROWS2-1,-1,-1):
+        if all(board[r]):
+            for e in board_ents[r]:
+                if e: destroy(e)
+            board.pop(r); board.insert(0,[None]*COLS2)
+            ents_row=board_ents.pop(r); board_ents.insert(0,[None]*COLS2)
+            cleared+=1
+    if cleared:
+        lines_val+=cleared; score_val+=cleared*cleared*100*level; level=lines_val//10+1
+        # shift entity positions
+        for r2 in range(ROWS2):
+            for c2 in range(COLS2):
+                if board_ents[r2][c2]: board_ents[r2][c2].position=gpos(c2,r2)
+    score_txt.text=f"Score:{score_val}\nLevel:{level}\nLines:{lines_val}"
+
+def reset():
+    global board,board_ents,score_val,level,lines_val,state,fall_t
+    for r in range(ROWS2):
+        for c in range(COLS2):
+            if board_ents[r][c]: destroy(board_ents[r][c])
+    board=[[None]*COLS2 for _ in range(ROWS2)]
+    board_ents=[[None]*COLS2 for _ in range(ROWS2)]
+    score_val=0;level=1;lines_val=0;fall_t=0
+    title_txt.visible=False; over_txt.text=""
+    score_txt.text="Score:0\nLevel:1\nLines:0"
+    state="playing"; spawn()
+
+def input(key):
+    global px,py,pshape,state
+    if key=="left mouse down" and state in("idle","over"): reset(); return
+    if state!="playing": return
+    if key=="left arrow"  and fits2(pshape,-1,0): px-=1; draw_piece()
+    if key=="right arrow" and fits2(pshape, 1,0): px+=1; draw_piece()
+    if key=="down arrow"  and fits2(pshape, 0,1): py+=1; draw_piece()
+    if key=="up arrow":
+        rot=rotate2(pshape)
+        if fits2(rot,0,0): pshape=rot; draw_piece()
+    if key=="space":
+        while fits2(pshape,0,1): py+=1
+        draw_piece()
+
+def update():
+    global fall_t,py,state
+    if state!="playing": return
+    fall_t+=time.dt
+    spd=max(0.05,0.5-level*0.04)
+    if fall_t>=spd:
+        fall_t=0
+        if fits2(pshape,0,1): py+=1; draw_piece()
+        else:
+            place2()
+            if not spawn(): state="over"; over_txt.text="GAME OVER\nclick restart"
+
+# background grid
+for r in range(ROWS2):
+    for c in range(COLS2):
+        Entity(model="quad",color=color.rgb(20,20,36),scale=CELL2*0.90,position=gpos(c,r),z=0.1)
+
+app.run()
