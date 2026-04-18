@@ -1,0 +1,91 @@
+from ursina import *
+import random
+
+app = Ursina(title="Snake")
+window.color = color.rgb(10,10,20)
+camera.orthographic = True
+camera.fov = 15
+camera.position = (0,0,-20)
+
+COLS, ROWS = 20, 20
+CELL = 1.2
+
+def gpos(x,y):
+    return Vec3((x - COLS//2)*CELL, (y - ROWS//2)*CELL, 0)
+
+segments, seg_entities = [], []
+food_entity = Entity(model="quad", color=color.rgb(255,60,60), scale=CELL*0.7)
+direction = [1,0]
+score_val = 0
+state = "idle"
+timer = 0
+
+score_txt = Text("Score: 0", position=(-0.85,0.45), scale=1.5, color=color.rgb(180,255,180))
+title_txt = Text("SNAKE\npress click to start", position=(-0.18,0.05), scale=2, color=color.rgb(0,220,80))
+over_txt  = Text("", position=(-0.22,0.05), scale=2, color=color.rgb(255,80,80))
+
+def spawn_food():
+    while True:
+        fx,fy = random.randint(0,COLS-1), random.randint(0,ROWS-1)
+        if (fx,fy) not in segments: break
+    food_entity.position = gpos(fx,fy)
+    food_entity.visible = True
+    return (fx,fy)
+
+def reset():
+    global segments, seg_entities, direction, score_val, state
+    for e in seg_entities: destroy(e)
+    seg_entities.clear(); segments.clear()
+    cx,cy = COLS//2, ROWS//2
+    segments = [(cx,cy)]
+    e = Entity(model="quad", color=color.rgb(0,200,80), scale=CELL*0.9)
+    e.position = gpos(cx,cy)
+    seg_entities.append(e)
+    direction = [1,0]
+    score_val = 0
+    score_txt.text = "Score: 0"
+    title_txt.visible = False
+    over_txt.text = ""
+    state = "playing"
+    return spawn_food()
+
+food_pos = spawn_food()
+
+def input(key):
+    global direction, food_pos, state
+    if key == "left mouse down":
+        if state in ("idle","over"):
+            food_pos = reset()
+    if state != "playing": return
+    if key == "up arrow"    and direction != [0,-1]: direction = [0, 1]
+    if key == "down arrow"  and direction != [0, 1]: direction = [0,-1]
+    if key == "left arrow"  and direction != [1, 0]: direction = [-1,0]
+    if key == "right arrow" and direction != [-1,0]: direction = [1, 0]
+
+def update():
+    global timer, food_pos, score_val, state
+    if state != "playing": return
+    timer += time.dt
+    if timer < 0.15: return
+    timer = 0
+    hx = segments[0][0]+direction[0]
+    hy = segments[0][1]+direction[1]
+    if hx<0 or hx>=COLS or hy<0 or hy>=ROWS or (hx,hy) in segments:
+        state = "over"
+        over_txt.text = f"GAME OVER\nScore {score_val} — click restart"
+        over_txt.visible = True
+        return
+    segments.insert(0,(hx,hy))
+    e = Entity(model="quad", color=color.rgb(0,200,80), scale=CELL*0.9)
+    e.position = gpos(hx,hy)
+    for i,s in enumerate(seg_entities): s.color = color.rgb(0,150,50)
+    seg_entities.insert(0,e)
+    if (hx,hy) == food_pos:
+        score_val += 10
+        score_txt.text = f"Score: {score_val}"
+        food_pos = spawn_food()
+    else:
+        destroy(seg_entities[-1])
+        seg_entities.pop(); segments.pop()
+
+app.run()
