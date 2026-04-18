@@ -1,0 +1,17 @@
+from ursina import *
+import random
+
+app = Ursina()
+
+targets = [Entity(model='cube', color=color.red,
+                  position=(random.randint(-5,5),1,random.randint(5,15)),
+                  collider='box') for _ in range(5)]
+
+def input(key):
+    if key == 'left mouse down':
+        for t in targets:
+            if t.hovered:
+                destroy(t)
+
+EditorCamera()
+app.run()
