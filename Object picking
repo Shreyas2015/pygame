@@ -1,0 +1,13 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 29: Object Picking"
+
+Variable = Entity(model='cube', color=color.white, collider='box')
+
+def input(key):
+    if key == 'left mouse down':
+        if mouse.hovered_entity == cube:
+            cube.color = color.red
+
+app.run()
