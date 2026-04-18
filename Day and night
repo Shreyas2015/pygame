@@ -1,0 +1,14 @@
+import pygame
+pygame.init()
+screen=pygame.display.set_mode((400,300))
+pygame.display.set_caption("Task 21: Day/Night")
+c=255
+running=True
+while running:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+    c-=0.1
+    if c<0: c=255
+    screen.fill((0,0,int(c)))
+    pygame.display.flip()
+pygame.quit()
