@@ -1,0 +1,13 @@
+import pygame,random
+pygame.init()
+screen=pygame.display.set_mode((400,300))
+pygame.display.set_caption("Task 18: Shake")
+running=True
+while running:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+    offset=random.randint(-5,5)
+    screen.fill((0,0,0))
+    pygame.draw.rect(screen,(255,0,0),(100+offset,100+offset,50,50))
+    pygame.display.flip()
+pygame.quit()
