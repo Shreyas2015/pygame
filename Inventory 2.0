@@ -1,0 +1,9 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 41: Inventory"
+
+panel = Panel(scale=(0.5,0.2))
+Text("Inventory", parent=panel)
+
+app.run()
