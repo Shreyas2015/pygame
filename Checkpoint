@@ -1,0 +1,13 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 43: Checkpoint"
+
+player = Entity(model='cube')
+checkpoint = Vec3(0,0,0)
+
+def update():
+    if player.y < -5:
+        player.position = checkpoint
+
+app.run()
