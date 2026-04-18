@@ -1,0 +1,15 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 37: Door"
+
+player = Entity(model='cube')
+door = Entity(model='cube', x=3)
+
+def update():
+    if distance(player, door) < 2:
+        door.y = 3
+    else:
+        door.y = 0
+
+app.run()
