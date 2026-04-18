@@ -1,0 +1,24 @@
+from ursina import *
+
+app = Ursina()
+
+player = Entity(model='cube')
+key = Entity(model='cube', color=color.yellow, position=(2,0,2))
+door = Entity(model='cube', color=color.red, position=(5,0,5))
+
+has_key = False
+
+def update():
+    global has_key
+
+    player.x += (held_keys['d'] - held_keys['a']) * time.dt * 5
+    player.z += (held_keys['w'] - held_keys['s']) * time.dt * 5
+
+    if distance(player, key) < 1:
+        destroy(key)
+        has_key = True
+
+    if has_key and distance(player, door) < 2:
+        door.y += time.dt * 2
+
+app.run()
