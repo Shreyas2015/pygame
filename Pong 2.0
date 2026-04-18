@@ -1,0 +1,76 @@
+from ursina import *
+import random
+
+app = Ursina(title="Pong")
+window.color = color.rgb(10,10,25)
+camera.orthographic = True
+camera.fov = 6
+camera.position = (0,0,-20)
+
+HW = camera.fov * window.aspect_ratio
+HH = camera.fov
+
+p1 = Entity(model="quad", color=color.rgb(100,180,255), scale=(0.15,1.2,1), position=(-HW+0.4,0,0))
+p2 = Entity(model="quad", color=color.rgb(255,120,100), scale=(0.15,1.2,1), position=( HW-0.4,0,0))
+ball= Entity(model="circle", color=color.white, scale=0.18)
+# walls
+Entity(model="quad",color=color.rgb(20,20,50),scale=(HW*2,0.1,1),position=(0, HH,0))
+Entity(model="quad",color=color.rgb(20,20,50),scale=(HW*2,0.1,1),position=(0,-HH,0))
+
+s1,s2 = 0,0
+bvx = random.choice([-1,1])*0.08
+bvy = random.uniform(-0.06,0.06)
+state = "idle"
+PAD_SPD = 5
+
+score_txt = Text(f"{s1}   {s2}", position=(-0.08,0.43), scale=2.5, color=color.white)
+title_txt = Text("PONG\nclick to start\nW/S  vs  ↑/↓", position=(-0.15,0.1), scale=1.8, color=color.rgb(180,180,255))
+
+def reset_ball():
+    global bvx,bvy
+    ball.position=(0,0,0)
+    bvx = random.choice([-1,1])*0.08
+    bvy = random.uniform(-0.05,0.05)
+
+def input(key):
+    global state
+    if key=="left mouse down" and state in("idle","over"):
+        state="playing"; s1=s2=0; score_txt.text="0   0"
+        title_txt.visible=False; reset_ball()
+        p1.y=0; p2.y=0
+
+def update():
+    global s1,s2,bvx,bvy,state
+    if state!="playing": return
+    keys_held = held_keys
+    if keys_held["w"] and p1.y< HH-0.6: p1.y += PAD_SPD*time.dt
+    if keys_held["s"] and p1.y>-HH+0.6: p1.y -= PAD_SPD*time.dt
+    if keys_held["up arrow"]   and p2.y< HH-0.6: p2.y += PAD_SPD*time.dt
+    if keys_held["down arrow"] and p2.y>-HH+0.6: p2.y -= PAD_SPD*time.dt
+
+    ball.x += bvx; ball.y += bvy
+    if abs(ball.y) >= HH-0.1: bvy *= -1
+
+    # p1 hit
+    if ball.x <= p1.x+0.15 and abs(ball.y-p1.y)<0.65:
+        bvx = abs(bvx)*1.05
+        bvy += (ball.y-p1.y)*0.05
+    # p2 hit
+    if ball.x >= p2.x-0.15 and abs(ball.y-p2.y)<0.65:
+        bvx = -abs(bvx)*1.05
+        bvy += (ball.y-p2.y)*0.05
+
+    bvx = max(-0.18,min(0.18,bvx))
+    bvy = max(-0.14,min(0.14,bvy))
+
+    if ball.x < -HW:
+        s2+=1; score_txt.text=f"{s1}   {s2}"; reset_ball()
+    if ball.x >  HW:
+        s1+=1; score_txt.text=f"{s1}   {s2}"; reset_ball()
+    if s1==7 or s2==7:
+        state="over"
+        winner="P1" if s1==7 else "P2"
+        title_txt.text=f"{winner} wins!\nclick to restart"
+        title_txt.visible=True
+
+app.run()
