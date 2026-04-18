@@ -1,0 +1,15 @@
+from ursina import *
+
+app = Ursina()
+
+player = Entity(model='cube', color=color.blue)
+zombie = Entity(model='cube', color=color.green, position=(5,0,5))
+
+def update():
+    player.x += (held_keys['d'] - held_keys['a']) * time.dt * 5
+    player.z += (held_keys['w'] - held_keys['s']) * time.dt * 5
+
+    zombie.look_at(player)
+    zombie.position += zombie.forward * time.dt * 2
+
+app.run()
