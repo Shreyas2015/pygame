@@ -1,0 +1,16 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 38: Shooting"
+
+bullets = []
+
+def input(key):
+    if key == 'left mouse down':
+        bullets.append(Entity(model='sphere'))
+
+def update():
+    for b in bullets:
+        b.z += 0.1
+
+app.run()
