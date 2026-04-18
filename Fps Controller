@@ -1,0 +1,10 @@
+
+from ursina import *
+from ursina.prefabs.first_person_controller import FirstPersonController
+
+app = Ursina()
+window.title = "Task 27: FPS Controller"
+
+player = FirstPersonController()
+
+app.run()
