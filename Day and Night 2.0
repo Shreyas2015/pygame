@@ -1,0 +1,11 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 40: Day Night"
+
+light = DirectionalLight()
+
+def update():
+    light.rotation_x += 0.2
+
+app.run()
