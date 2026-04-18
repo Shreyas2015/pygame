@@ -1,0 +1,67 @@
+import pygame, random, sys
+pygame.init()
+W, H, CELL = 600, 600, 20
+COLS, ROWS = W//CELL, H//CELL
+screen = pygame.display.set_mode((W, H))
+pygame.display.set_caption("Snake")
+clock = pygame.time.Clock()
+font = pygame.font.SysFont("Arial", 24)
+big  = pygame.font.SysFont("Arial", 40, bold=True)
+
+def new_game():
+    snake = [(COLS//2, ROWS//2)]
+    direction = (1, 0)
+    food = (random.randint(0,COLS-1), random.randint(0,ROWS-1))
+    return snake, direction, food, 0
+
+snake, direction, food, score = new_game()
+state = "idle"
+
+while True:
+    for e in pygame.event.get():
+        if e.type == pygame.QUIT: sys.exit()
+        if e.type == pygame.KEYDOWN:
+            if state in ("idle","over"):
+                snake, direction, food, score = new_game()
+                state = "playing"
+            elif state == "playing":
+                if e.key == pygame.K_UP    and direction != (0,1):  direction = (0,-1)
+                if e.key == pygame.K_DOWN  and direction != (0,-1): direction = (0, 1)
+                if e.key == pygame.K_LEFT  and direction != (1,0):  direction = (-1,0)
+                if e.key == pygame.K_RIGHT and direction != (-1,0): direction = (1, 0)
+
+    if state == "playing":
+        head = (snake[0][0]+direction[0], snake[0][1]+direction[1])
+        if (head[0]<0 or head[0]>=COLS or head[1]<0 or head[1]>=ROWS or head in snake):
+            state = "over"
+        else:
+            snake.insert(0, head)
+            if head == food:
+                score += 10
+                while True:
+                    food = (random.randint(0,COLS-1), random.randint(0,ROWS-1))
+                    if food not in snake: break
+            else:
+                snake.pop()
+
+    screen.fill((10,10,20))
+    for gx in range(COLS):
+        for gy in range(ROWS):
+            pygame.draw.rect(screen,(15,15,28),(gx*CELL,gy*CELL,CELL-1,CELL-1))
+    for i,(x,y) in enumerate(snake):
+        col = (0,200,80) if i==0 else (0,150,50)
+        pygame.draw.rect(screen, col, (x*CELL+1,y*CELL+1,CELL-2,CELL-2), border_radius=4)
+    pygame.draw.rect(screen,(255,60,60),(food[0]*CELL+2,food[1]*CELL+2,CELL-4,CELL-4), border_radius=4)
+    screen.blit(font.render(f"Score: {score}",True,(180,255,180)),(10,10))
+    if state == "idle":
+        t = big.render("SNAKE",True,(0,220,80))
+        screen.blit(t,(W//2-t.get_width()//2,H//2-40))
+        s = font.render("Press any key",True,(150,200,150))
+        screen.blit(s,(W//2-s.get_width()//2,H//2+20))
+    if state == "over":
+        t = big.render("GAME OVER",True,(255,80,80))
+        screen.blit(t,(W//2-t.get_width()//2,H//2-40))
+        s = font.render(f"Score {score} — press key",True,(200,150,150))
+        screen.blit(s,(W//2-s.get_width()//2,H//2+20))
+    pygame.display.flip()
+    clock.tick(10)
