@@ -1,0 +1,13 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 26: Rotating Cube"
+
+cube = Entity(model='cube', color=color.azure)
+
+DirectionalLight()
+
+def update():
+    cube.rotation_y += 1
+
+app.run()
