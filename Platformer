@@ -1,0 +1,33 @@
+import pygame
+pygame.init()
+
+screen = pygame.display.set_mode((800,600))
+pygame.display.set_caption("Task 4: Platformer")
+
+player = pygame.Rect(100,100,40,40)
+
+vel_y = 0
+ground = 500
+
+running = True
+while running:
+    for e in pygame.event.get():
+        if e.type == pygame.QUIT:
+            running = False
+        if e.type == pygame.KEYDOWN:
+            if e.key == pygame.K_SPACE:
+                vel_y = -10
+
+    vel_y += 0.5
+    player.y += vel_y
+
+    if player.y + player.height >= ground:
+        player.y = ground - player.height
+        vel_y = 0
+
+    screen.fill((0,0,0))
+    pygame.draw.rect(screen,(0,255,0),player)
+    pygame.draw.rect(screen,(200,200,200),(0,ground,800,100))
+
+    pygame.display.flip()
+pygame.quit()
