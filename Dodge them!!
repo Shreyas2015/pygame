@@ -1,0 +1,43 @@
+import pygame
+import random
+
+pygame.init()
+screen = pygame.display.set_mode((800, 600))
+
+player = pygame.Rect(400, 500, 50, 50)
+enemies = []
+
+for _ in range(5):
+    enemies.append(pygame.Rect(random.randint(0,750), 0, 50, 50))
+
+running = True
+while running:
+    screen.fill((0, 0, 0))
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        player.x -= 5
+    if keys[pygame.K_RIGHT]:
+        player.x += 5
+
+    for enemy in enemies:
+        enemy.y += 5
+        if enemy.y > 600:
+            enemy.y = 0
+            enemy.x = random.randint(0,750)
+
+        if player.colliderect(enemy):
+            print("Game Over")
+            running = False
+
+        pygame.draw.rect(screen, (255, 0, 0), enemy)
+
+    pygame.draw.rect(screen, (0, 255, 0), player)
+
+    pygame.display.update()
+
+pygame.quit()
