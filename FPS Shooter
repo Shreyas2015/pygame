@@ -1,0 +1,19 @@
+from ursina import *
+from ursina.prefabs.first_person_controller import FirstPersonController
+
+app = Ursina()
+
+player = FirstPersonController()
+gun = Entity(parent=camera, model='cube', scale=(0.2,0.2,1), position=(0.5,-0.5,1))
+
+enemy = Entity(model='cube', color=color.red, position=(0,0,10), collider='box')
+
+def shoot():
+    if enemy and distance(player, enemy) < 15:
+        destroy(enemy)
+
+def input(key):
+    if key == 'left mouse down':
+        shoot()
+
+app.run()
