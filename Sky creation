@@ -1,0 +1,8 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 32: Skybox"
+
+Sky()
+
+app.run()
