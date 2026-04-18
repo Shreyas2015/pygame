@@ -1,0 +1,20 @@
+from ursina import *
+
+app = Ursina()
+
+car = Entity(model='cube', scale=(1,0.5,2), color=color.blue)
+
+speed = 0
+
+def update():
+    global speed
+
+    if held_keys['w']:
+        speed += 0.01
+    if held_keys['s']:
+        speed -= 0.01
+
+    car.z += speed
+    car.rotation_y += (held_keys['d'] - held_keys['a']) * 2
+
+app.run()
