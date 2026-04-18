@@ -1,0 +1,96 @@
+import pygame, sys, random
+pygame.init()
+W,H=800,600
+screen=pygame.display.set_mode((W,H))
+pygame.display.set_caption("Space Invaders")
+clock=pygame.time.Clock()
+font=pygame.font.SysFont("Arial",22,bold=True)
+big=pygame.font.SysFont("Arial",40,bold=True)
+
+def make_invaders():
+    inv=[]
+    for r in range(4):
+        for c in range(10):
+            inv.append([80+c*65, 80+r*52, True, r])
+    return inv
+
+def reset():
+    return W//2,list(make_invaders()),[],[], 0,3,1,"idle"
+
+px,invaders,bullets,inv_bullets,score,lives,level,state=reset()
+inv_dir=1; inv_timer=0; shoot_timer=0; player_shoot_cd=0
+
+while True:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: sys.exit()
+        if e.type==pygame.KEYDOWN and state in("idle","over","win"):
+            px,invaders,bullets,inv_bullets,score,lives,level,state=reset(); inv_dir=1
+
+    if state=="playing":
+        keys=pygame.key.get_pressed()
+        if keys[pygame.K_LEFT] and px>20: px-=5
+        if keys[pygame.K_RIGHT] and px<W-20: px+=5
+        if keys[pygame.K_SPACE] and player_shoot_cd<=0:
+            bullets.append([px,H-70]); player_shoot_cd=20
+        player_shoot_cd=max(0,player_shoot_cd-1)
+
+        inv_timer+=1
+        spd=max(4,8-len([i for i in invaders if i[2]])//4)
+        if inv_timer>=spd:
+            inv_timer=0
+            alive=[i for i in invaders if i[2]]
+            if alive:
+                xs=[i[0] for i in alive]
+                if (inv_dir==1 and max(xs)>W-50) or (inv_dir==-1 and min(xs)<50):
+                    inv_dir*=-1
+                    for i in invaders:
+                        if i[2]: i[1]+=20
+                for i in invaders:
+                    if i[2]: i[0]+=inv_dir*12
+
+        shoot_timer+=1
+        if shoot_timer>=45:
+            shoot_timer=0
+            alive=[i for i in invaders if i[2]]
+            if alive:
+                shooter=random.choice(alive)
+                inv_bullets.append([shooter[0],shooter[1]])
+
+        for b in bullets[:]:
+            b[1]-=8
+            for i in invaders:
+                if i[2] and abs(b[0]-i[0])<24 and abs(b[1]-i[1])<18:
+                    i[2]=False; bullets.remove(b); score+=10*(i[3]+1); break
+            else:
+                if b[1]<0: bullets.remove(b)
+
+        for b in inv_bullets[:]:
+            b[1]+=5
+            if abs(b[0]-px)<20 and abs(b[1]-(H-60))<18:
+                lives-=1; inv_bullets.remove(b)
+                if lives==0: state="over"
+            elif b[1]>H: inv_bullets.remove(b)
+
+        if not any(i[2] for i in invaders): state="win"
+        if any(i[2] and i[1]>H-80 for i in invaders): state="over"
+
+    screen.fill((5,5,18))
+    COLS_INV=[(255,80,80),(255,180,60),(80,200,255),(100,255,100)]
+    for i in invaders:
+        if i[2]:
+            c=COLS_INV[i[3]]
+            pygame.draw.rect(screen,c,(i[0]-22,i[1]-14,44,28),border_radius=4)
+            pygame.draw.rect(screen,(255,255,255),(i[0]-8,i[1]-8,6,8))
+            pygame.draw.rect(screen,(255,255,255),(i[0]+2,i[1]-8,6,8))
+    pygame.draw.polygon(screen,(80,180,255),[(px,H-70),(px-20,H-50),(px+20,H-50)])
+    for b in bullets: pygame.draw.rect(screen,(255,255,100),(b[0]-3,b[1]-8,6,16),border_radius=2)
+    for b in inv_bullets: pygame.draw.rect(screen,(255,80,80),(b[0]-3,b[1],6,14),border_radius=2)
+    screen.blit(font.render(f"Score:{score}  Lives:{'♥'*lives}",True,(180,220,255)),(10,10))
+    if state=="idle":
+        t=big.render("SPACE INVADERS",True,(80,200,255)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=font.render("← → move   SPACE shoot   press key",True,(150,180,220)); screen.blit(s,(W//2-s.get_width()//2,H//2+30))
+    if state=="over":
+        t=big.render("GAME OVER",True,(255,80,80)); screen.blit(t,(W//2-t.get_width()//2,H//2-20))
+    if state=="win":
+        t=big.render("YOU WIN!",True,(80,255,120)); screen.blit(t,(W//2-t.get_width()//2,H//2-20))
+    pygame.display.flip(); clock.tick(60)
