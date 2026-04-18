@@ -1,0 +1,17 @@
+import pygame
+pygame.init()
+screen=pygame.display.set_mode((400,400))
+pygame.display.set_caption("Task 14: Tilemap")
+tile=40
+map=[[1,1,1],[1,0,1]]
+running=True
+while running:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+    screen.fill((0,0,0))
+    for y,row in enumerate(map):
+        for x,val in enumerate(row):
+            if val==1:
+                pygame.draw.rect(screen,(200,200,200),(x*tile,y*tile,tile,tile))
+    pygame.display.flip()
+pygame.quit()
