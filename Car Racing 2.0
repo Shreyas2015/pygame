@@ -1,0 +1,80 @@
+import pygame
+import random
+
+pygame.init()
+
+WIDTH, HEIGHT = 500, 700
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Car Racing")
+
+clock = pygame.time.Clock()
+
+# Colors
+WHITE = (255,255,255)
+GRAY = (50,50,50)
+RED = (255,0,0)
+BLUE = (0,0,255)
+
+# Player car
+player = pygame.Rect(220, 550, 60, 100)
+
+# Enemy cars
+enemies = []
+for i in range(3):
+    enemies.append(pygame.Rect(random.randint(100, 340), -150*i, 60, 100))
+
+speed = 5
+score = 0
+font = pygame.font.Font(None, 36)
+
+running = True
+game_over = False
+
+while running:
+    clock.tick(60)
+    screen.fill(GRAY)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    keys = pygame.key.get_pressed()
+    if not game_over:
+        if keys[pygame.K_LEFT] and player.x > 100:
+            player.x -= 6
+        if keys[pygame.K_RIGHT] and player.x < 340:
+            player.x += 6
+
+    # Road lines
+    for i in range(0, HEIGHT, 40):
+        pygame.draw.rect(screen, WHITE, (245, i + (score % 40), 10, 20))
+
+    # Enemy movement
+    if not game_over:
+        for enemy in enemies:
+            enemy.y += speed
+
+            if enemy.y > HEIGHT:
+                enemy.y = random.randint(-150, -50)
+                enemy.x = random.randint(100, 340)
+                score += 1
+
+            if player.colliderect(enemy):
+                game_over = True
+
+    # Draw cars
+    pygame.draw.rect(screen, BLUE, player)
+    for enemy in enemies:
+        pygame.draw.rect(screen, RED, enemy)
+
+    # Score
+    text = font.render(f"Score: {score}", True, WHITE)
+    screen.blit(text, (10,10))
+
+    if game_over:
+        over = font.render("GAME OVER", True, RED)
+        screen.blit(over, (150, 300))
+
+    pygame.display.update()
+
+pygame.quit()
