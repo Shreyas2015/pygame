@@ -1,0 +1,71 @@
+import pygame
+import random
+
+pygame.init()
+
+WIDTH, HEIGHT = 1000, 700
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Big City - Pygame")
+
+clock = pygame.time.Clock()
+
+TILE = 40
+MAP_SIZE = 100  # 100x100 grid
+
+# Generate city map
+city = []
+for y in range(MAP_SIZE):
+    row = []
+    for x in range(MAP_SIZE):
+        if x % 5 == 0 or y % 5 == 0:
+            row.append("road")
+        else:
+            row.append(random.choice(["building", "park"]))
+    city.append(row)
+
+cam_x, cam_y = 0, 0
+speed = 10
+
+running = True
+while running:
+    clock.tick(60)
+    screen.fill((30, 30, 30))
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+        cam_x -= speed
+    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+        cam_x += speed
+    if keys[pygame.K_w] or keys[pygame.K_UP]:
+        cam_y -= speed
+    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+        cam_y += speed
+
+    # Draw visible tiles
+    for y in range(HEIGHT // TILE + 2):
+        for x in range(WIDTH // TILE + 2):
+            world_x = (x + cam_x // TILE)
+            world_y = (y + cam_y // TILE)
+
+            if 0 <= world_x < MAP_SIZE and 0 <= world_y < MAP_SIZE:
+                tile = city[world_y][world_x]
+
+                draw_x = x * TILE - cam_x % TILE
+                draw_y = y * TILE - cam_y % TILE
+
+                if tile == "road":
+                    color = (50, 50, 50)
+                elif tile == "building":
+                    color = (random.randint(100,200), 100, 100)
+                else:
+                    color = (50, 150, 50)
+
+                pygame.draw.rect(screen, color, (draw_x, draw_y, TILE, TILE))
+
+    pygame.display.update()
+
+pygame.quit()
