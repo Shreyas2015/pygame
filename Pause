@@ -1,0 +1,15 @@
+import pygame
+pygame.init()
+screen=pygame.display.set_mode((400,300))
+pygame.display.set_caption("Task 11: Pause")
+paused=False
+running=True
+while running:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+        if e.type==pygame.KEYDOWN:
+            if e.key==pygame.K_p: paused=not paused
+    if paused: continue
+    screen.fill((0,0,0))
+    pygame.display.flip()
+pygame.quit()
