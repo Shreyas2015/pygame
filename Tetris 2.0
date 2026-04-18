@@ -1,0 +1,119 @@
+import pygame, sys, random, copy
+pygame.init()
+CELL=30; COLS2=10; ROWS2=20
+W,H=COLS2*CELL+200,ROWS2*CELL
+screen=pygame.display.set_mode((W,H))
+pygame.display.set_caption("Tetris")
+clock=pygame.time.Clock()
+font=pygame.font.SysFont("Arial",20,bold=True)
+big=pygame.font.SysFont("Arial",36,bold=True)
+
+SHAPES=[
+    [[1,1,1,1]],
+    [[1,1],[1,1]],
+    [[0,1,0],[1,1,1]],
+    [[1,0,0],[1,1,1]],
+    [[0,0,1],[1,1,1]],
+    [[0,1,1],[1,1,0]],
+    [[1,1,0],[0,1,1]],
+]
+COLORS=[(0,220,220),(220,220,0),(180,0,220),(0,80,220),(220,120,0),(0,220,0),(220,0,0)]
+
+def new_piece():
+    idx=random.randint(0,len(SHAPES)-1)
+    return {"shape":copy.deepcopy(SHAPES[idx]),"color":COLORS[idx],"x":3,"y":0}
+
+def rotate(s):
+    return [list(row) for row in zip(*s[::-1])]
+
+def fits(board,piece,ox=0,oy=0):
+    for r,row in enumerate(piece["shape"]):
+        for c,v in enumerate(row):
+            if v:
+                nx,ny=piece["x"]+c+ox,piece["y"]+r+oy
+                if nx<0 or nx>=COLS2 or ny>=ROWS2: return False
+                if ny>=0 and board[ny][nx]: return False
+    return True
+
+def place(board,piece):
+    for r,row in enumerate(piece["shape"]):
+        for c,v in enumerate(row):
+            if v and piece["y"]+r>=0:
+                board[piece["y"]+r][piece["x"]+c]=piece["color"]
+
+def clear_lines(board):
+    new=[row for row in board if not all(row)]
+    cleared=ROWS2-len(new)
+    return [[None]*COLS2]*cleared+new,cleared
+
+board=[[None]*COLS2 for _ in range(ROWS2)]
+piece=new_piece(); next_p=new_piece()
+score=0; level=1; lines=0; state="idle"
+fall_timer=0
+
+while True:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: sys.exit()
+        if e.type==pygame.KEYDOWN:
+            if state in("idle","over"):
+                board=[[None]*COLS2 for _ in range(ROWS2)]
+                piece=new_piece(); next_p=new_piece(); score=0; level=1; lines=0; state="playing"
+            elif state=="playing":
+                if e.key==pygame.K_LEFT and fits(board,piece,-1): piece["x"]-=1
+                if e.key==pygame.K_RIGHT and fits(board,piece,1): piece["x"]+=1
+                if e.key==pygame.K_DOWN and fits(board,piece,0,1): piece["y"]+=1
+                if e.key==pygame.K_UP:
+                    rot={"shape":rotate(piece["shape"]),"color":piece["color"],"x":piece["x"],"y":piece["y"]}
+                    if fits(board,rot): piece["shape"]=rot["shape"]
+                if e.key==pygame.K_SPACE:
+                    while fits(board,piece,0,1): piece["y"]+=1
+
+    if state=="playing":
+        fall_timer+=1
+        fall_spd=max(5,30-level*2)
+        if fall_timer>=fall_spd:
+            fall_timer=0
+            if fits(board,piece,0,1): piece["y"]+=1
+            else:
+                place(board,piece)
+                board,cl=clear_lines(board)
+                lines+=cl; score+=cl*cl*100*level; level=lines//10+1
+                piece=next_p; next_p=new_piece()
+                if not fits(board,piece): state="over"
+
+    screen.fill((12,12,24))
+    # grid
+    for r in range(ROWS2):
+        for c in range(COLS2):
+            cell=board[r][c]
+            x,y=c*CELL,r*CELL
+            pygame.draw.rect(screen,(20,20,36),(x+1,y+1,CELL-2,CELL-2))
+            if cell: pygame.draw.rect(screen,cell,(x+2,y+2,CELL-4,CELL-4),border_radius=3)
+    # active piece
+    for r,row in enumerate(piece["shape"]):
+        for c,v in enumerate(row):
+            if v:
+                x=(piece["x"]+c)*CELL; y=(piece["y"]+r)*CELL
+                pygame.draw.rect(screen,piece["color"],(x+2,y+2,CELL-4,CELL-4),border_radius=3)
+    # border
+    pygame.draw.rect(screen,(60,60,100),(0,0,COLS2*CELL,ROWS2*CELL),2)
+    # sidebar
+    sx=COLS2*CELL+10
+    screen.blit(font.render("SCORE",True,(150,180,220)),(sx,20))
+    screen.blit(font.render(str(score),True,(255,255,200)),(sx,44))
+    screen.blit(font.render(f"LEVEL {level}",True,(150,180,220)),(sx,80))
+    screen.blit(font.render(f"LINES {lines}",True,(150,180,220)),(sx,110))
+    screen.blit(font.render("NEXT",True,(150,180,220)),(sx,160))
+    for r,row in enumerate(next_p["shape"]):
+        for c,v in enumerate(row):
+            if v:
+                pygame.draw.rect(screen,next_p["color"],(sx+c*CELL,190+r*CELL,CELL-4,CELL-4),border_radius=3)
+    if state=="idle":
+        overlay=pygame.Surface((W,H),pygame.SRCALPHA); overlay.fill((0,0,0,160)); screen.blit(overlay,(0,0))
+        t=big.render("TETRIS",True,(0,220,220)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=font.render("Press any key",True,(180,220,255)); screen.blit(s,(W//2-s.get_width()//2,H//2+20))
+    if state=="over":
+        overlay=pygame.Surface((W,H),pygame.SRCALPHA); overlay.fill((0,0,0,160)); screen.blit(overlay,(0,0))
+        t=big.render("GAME OVER",True,(255,80,80)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=font.render(f"Score {score} — press key",True,(255,180,180)); screen.blit(s,(W//2-s.get_width()//2,H//2+20))
+    pygame.display.flip(); clock.tick(60)
