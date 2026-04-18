@@ -1,0 +1,9 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 34: Health Bar"
+
+enemy = Entity(model='cube')
+bar = Entity(parent=enemy, model='cube', scale=(1,0.1,0.1), y=1, color=color.green)
+
+app.run()
