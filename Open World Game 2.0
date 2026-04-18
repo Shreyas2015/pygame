@@ -1,0 +1,185 @@
+import pygame
+import random
+import math
+
+pygame.init()
+
+WIDTH, HEIGHT = 1000, 700
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Open World Game")
+
+clock = pygame.time.Clock()
+
+# COLORS
+WHITE=(255,255,255)
+BLACK=(0,0,0)
+RED=(255,0,0)
+GREEN=(0,255,0)
+BLUE=(0,150,255)
+GRAY=(60,60,60)
+
+# WORLD
+WORLD_SIZE = 3000
+
+# PLAYER
+player = pygame.Rect(500, 350, 40, 40)
+player_speed = 4
+health = 100
+
+# CAMERA
+cam_x, cam_y = 0, 0
+
+# BULLETS
+bullets = []
+ammo = 10
+max_ammo = 10
+
+# ENEMIES
+enemies = []
+for _ in range(20):
+    enemies.append(pygame.Rect(random.randint(0,WORLD_SIZE),
+                               random.randint(0,WORLD_SIZE), 40, 40))
+
+# CAR
+car = pygame.Rect(700, 500, 80, 40)
+in_car = False
+car_speed = 0
+
+font = pygame.font.Font(None, 30)
+
+def draw_world():
+    for x in range(0, WORLD_SIZE, 200):
+        for y in range(0, WORLD_SIZE, 200):
+            pygame.draw.rect(screen, GRAY,
+                (x-cam_x, y-cam_y, 180, 180),1)
+
+def draw_player():
+    pygame.draw.rect(screen, BLUE,
+        (player.x-cam_x, player.y-cam_y, 40,40))
+
+def draw_enemies():
+    for e in enemies:
+        pygame.draw.rect(screen, RED,
+            (e.x-cam_x, e.y-cam_y, 40,40))
+
+def draw_car():
+    pygame.draw.rect(screen, GREEN,
+        (car.x-cam_x, car.y-cam_y, 80,40))
+
+def draw_bullets():
+    for b in bullets:
+        pygame.draw.circle(screen, WHITE,
+            (int(b[0]-cam_x), int(b[1]-cam_y)),5)
+
+def move_player(keys):
+    global cam_x, cam_y
+
+    speed = player_speed
+    if keys[pygame.K_LSHIFT]:
+        speed = 7
+
+    if keys[pygame.K_w]:
+        player.y -= speed
+    if keys[pygame.K_s]:
+        player.y += speed
+    if keys[pygame.K_a]:
+        player.x -= speed
+    if keys[pygame.K_d]:
+        player.x += speed
+
+    cam_x = player.x - WIDTH//2
+    cam_y = player.y - HEIGHT//2
+
+def move_car(keys):
+    global car_speed
+
+    if keys[pygame.K_w]:
+        car_speed += 0.2
+    if keys[pygame.K_s]:
+        car_speed -= 0.2
+
+    car_speed *= 0.95
+    car.x += car_speed
+
+def shoot(mouse_pos):
+    global ammo
+    if ammo > 0:
+        dx = mouse_pos[0] - WIDTH//2
+        dy = mouse_pos[1] - HEIGHT//2
+        dist = math.hypot(dx,dy)
+        dx, dy = dx/dist, dy/dist
+        bullets.append([player.x, player.y, dx, dy])
+        ammo -= 1
+
+def move_bullets():
+    for b in bullets:
+        b[0] += b[2]*10
+        b[1] += b[3]*10
+
+def enemy_ai():
+    global health
+    for e in enemies:
+        dx = player.x - e.x
+        dy = player.y - e.y
+        dist = math.hypot(dx,dy)
+        if dist > 0:
+            e.x += dx/dist * 1.5
+            e.y += dy/dist * 1.5
+
+        if player.colliderect(e):
+            health -= 0.1
+
+def bullet_hits():
+    for b in bullets[:]:
+        for e in enemies[:]:
+            if pygame.Rect(e.x,e.y,40,40).collidepoint(b[0],b[1]):
+                enemies.remove(e)
+                bullets.remove(b)
+                break
+
+running=True
+while running:
+    clock.tick(60)
+    screen.fill(BLACK)
+
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            running=False
+        if event.type==pygame.MOUSEBUTTONDOWN:
+            shoot(pygame.mouse.get_pos())
+        if event.type==pygame.KEYDOWN:
+            if event.key==pygame.K_r:
+                ammo = max_ammo
+            if event.key==pygame.K_f:
+                if player.colliderect(car):
+                    in_car = not in_car
+
+    keys = pygame.key.get_pressed()
+
+    if not in_car:
+        move_player(keys)
+    else:
+        move_car(keys)
+        player.center = car.center
+
+    move_bullets()
+    enemy_ai()
+    bullet_hits()
+
+    draw_world()
+    draw_car()
+    draw_player()
+    draw_enemies()
+    draw_bullets()
+
+    # UI
+    screen.blit(font.render(f"Health: {int(health)}", True, WHITE),(10,10))
+    screen.blit(font.render(f"Ammo: {ammo}", True, WHITE),(10,40))
+    screen.blit(font.render(f"Enemies: {len(enemies)}", True, WHITE),(10,70))
+
+    if health <= 0:
+        screen.blit(font.render("GAME OVER", True, RED),(450,300))
+
+    pygame.display.update()
+
+pygame.quit()
