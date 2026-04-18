@@ -1,0 +1,15 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 49: Score"
+
+score = 0
+text = Text(text="Score: 0")
+
+def input(key):
+    global score
+    if key == 'space':
+        score += 1
+        text.text = f"Score: {score}"
+
+app.run()
