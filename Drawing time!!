@@ -1,0 +1,79 @@
+import pygame
+
+pygame.init()
+
+WIDTH, HEIGHT = 1000, 700
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Drawing Game")
+
+clock = pygame.time.Clock()
+
+WHITE = (255,255,255)
+BLACK = (0,0,0)
+RED = (255,0,0)
+GREEN = (0,255,0)
+BLUE = (0,0,255)
+YELLOW = (255,255,0)
+
+colors = [BLACK, RED, GREEN, BLUE, YELLOW]
+current_color = BLACK
+
+brush_size = 5
+drawing = False
+
+canvas = pygame.Surface((WIDTH, HEIGHT))
+canvas.fill(WHITE)
+
+font = pygame.font.Font(None, 30)
+
+running = True
+while running:
+    clock.tick(60)
+    screen.fill((200,200,200))
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            drawing = True
+        if event.type == pygame.MOUSEBUTTONUP:
+            drawing = False
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_1:
+                current_color = colors[0]
+            if event.key == pygame.K_2:
+                current_color = colors[1]
+            if event.key == pygame.K_3:
+                current_color = colors[2]
+            if event.key == pygame.K_4:
+                current_color = colors[3]
+            if event.key == pygame.K_5:
+                current_color = colors[4]
+
+            if event.key == pygame.K_UP:
+                brush_size += 1
+            if event.key == pygame.K_DOWN:
+                brush_size = max(1, brush_size - 1)
+
+            if event.key == pygame.K_e:
+                current_color = WHITE  # eraser
+
+            if event.key == pygame.K_c:
+                canvas.fill(WHITE)
+
+    if drawing:
+        mouse_pos = pygame.mouse.get_pos()
+        pygame.draw.circle(canvas, current_color, mouse_pos, brush_size)
+
+    # Draw canvas
+    screen.blit(canvas, (0,0))
+
+    # UI text
+    screen.blit(font.render(f"Brush: {brush_size}", True, BLACK), (10,10))
+    screen.blit(font.render("1-5 Colors | E Eraser | C Clear", True, BLACK), (10,40))
+
+    pygame.display.update()
+
+pygame.quit()
