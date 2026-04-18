@@ -1,0 +1,72 @@
+import pygame, sys, random, time as tm
+pygame.init()
+W,H=600,520
+screen=pygame.display.set_mode((W,H))
+pygame.display.set_caption("Whack-a-Mole")
+clock=pygame.time.Clock()
+font=pygame.font.SysFont("Arial",24,bold=True)
+big=pygame.font.SysFont("Arial",40,bold=True)
+
+HOLES=[(100,180),(300,180),(500,180),(100,320),(300,320),(500,320),(200,440),(400,440)]
+HOLE_R=38
+
+moles=[{"up":False,"t":0,"dur":0,"whacked":False} for _ in range(len(HOLES))]
+score=0; misses=0; MAX_MISS=5; state="idle"; game_end=0
+last_spawn=0; SPAWN_INT=0.9
+
+def spawn_mole():
+    idle=[i for i,m in enumerate(moles) if not m["up"]]
+    if idle:
+        i=random.choice(idle)
+        moles[i]["up"]=True; moles[i]["t"]=tm.time()
+        moles[i]["dur"]=random.uniform(0.8,1.6); moles[i]["whacked"]=False
+
+while True:
+    now=tm.time()
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: sys.exit()
+        if e.type==pygame.MOUSEBUTTONDOWN:
+            if state in("idle","over"):
+                for m in moles: m["up"]=False; m["whacked"]=False
+                score=0; misses=0; state="playing"; last_spawn=now
+            elif state=="playing":
+                mx,my=e.pos
+                for i,(hx,hy) in enumerate(HOLES):
+                    if moles[i]["up"] and not moles[i]["whacked"]:
+                        if (mx-hx)**2+(my-hy)**2<HOLE_R**2:
+                            moles[i]["whacked"]=True; score+=10
+
+    if state=="playing":
+        if now-last_spawn>SPAWN_INT: last_spawn=now; spawn_mole()
+        for m in moles:
+            if m["up"] and not m["whacked"] and now-m["t"]>m["dur"]:
+                m["up"]=False; misses+=1
+            if m["whacked"] and now-m["t"]>0.3: m["up"]=False
+        if misses>=MAX_MISS: state="over"
+
+    screen.fill((80,160,60))
+    # grass texture
+    for i in range(0,W,20):
+        pygame.draw.line(screen,(70,150,50),(i,0),(i+10,H),1)
+    for hx,hy in HOLES:
+        pygame.draw.ellipse(screen,(30,20,10),(hx-HOLE_R,hy-14,HOLE_R*2,28))
+    for i,(hx,hy) in enumerate(HOLES):
+        m=moles[i]
+        if m["up"]:
+            col=(255,100,100) if m["whacked"] else (180,120,60)
+            pygame.draw.ellipse(screen,col,(hx-22,hy-30,44,44))
+            if not m["whacked"]:
+                pygame.draw.circle(screen,(10,10,10),(hx-8,hy-20),4)
+                pygame.draw.circle(screen,(10,10,10),(hx+8,hy-20),4)
+                pygame.draw.arc(screen,(10,10,10),(hx-10,hy-10,20,12),3.3,6.1,2)
+    screen.blit(font.render(f"Score:{score}",True,(255,240,200)),(10,10))
+    screen.blit(font.render(f"Misses:{'X'*misses}{'_'*(MAX_MISS-misses)}",True,(255,120,120)),(10,40))
+    if state=="idle":
+        t=big.render("WHACK-A-MOLE",True,(255,240,100)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=font.render("Click moles before they hide!",True,(255,255,200)); screen.blit(s,(W//2-s.get_width()//2,H//2+30))
+        s2=font.render("Click anywhere to start",True,(255,255,200)); screen.blit(s2,(W//2-s2.get_width()//2,H//2+60))
+    if state=="over":
+        overlay=pygame.Surface((W,H),pygame.SRCALPHA); overlay.fill((0,0,0,150)); screen.blit(overlay,(0,0))
+        t=big.render("TIME'S UP!",True,(255,220,60)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=font.render(f"Final Score: {score} — click to retry",True,(255,200,150)); screen.blit(s,(W//2-s.get_width()//2,H//2+20))
+    pygame.display.flip(); clock.tick(60)
