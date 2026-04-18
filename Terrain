@@ -1,0 +1,8 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 28: Terrain"
+
+terrain = Entity(model='plane', scale=50, texture='grass', collider='box')
+
+app.run()
