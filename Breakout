@@ -1,0 +1,66 @@
+import pygame, sys, random
+pygame.init()
+W,H=800,600
+screen=pygame.display.set_mode((W,H))
+pygame.display.set_caption("Breakout")
+clock=pygame.time.Clock()
+font=pygame.font.SysFont("Arial",22,bold=True)
+big=pygame.font.SysFont("Arial",40,bold=True)
+
+BW,BH=70,22
+COLS,ROWS=9,6
+PAD_W,PAD_H=110,14
+BALL_R=9
+COLORS=[(255,80,80),(255,150,60),(255,220,60),(80,220,80),(60,160,255),(180,80,255)]
+
+def make_bricks():
+    bricks=[]
+    for r in range(ROWS):
+        for c in range(COLS):
+            x=c*(BW+6)+55; y=r*(BH+6)+60
+            bricks.append([x,y,True,COLORS[r]])
+    return bricks
+
+def reset():
+    return W//2,H-60,W//2,H-70,random.choice([-1,1])*4,-5,make_bricks(),0,3,"idle"
+
+px,_,bx,by,vx,vy,bricks,score,lives,state=reset()
+
+while True:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: sys.exit()
+        if e.type==pygame.MOUSEMOTION: px=e.pos[0]
+        if e.type==pygame.MOUSEBUTTONDOWN and state in("idle","over","win"):
+            px,_,bx,by,vx,vy,bricks,score,lives,state=reset()
+            state="playing"
+
+    if state=="playing":
+        bx+=vx; by+=vy
+        if bx<=BALL_R or bx>=W-BALL_R: vx*=-1
+        if by<=BALL_R: vy*=-1
+        py=H-60
+        if by>=py-BALL_R and px-PAD_W//2<=bx<=px+PAD_W//2:
+            vy=-abs(vy); vx+=(bx-(px))*0.08
+        for b in bricks:
+            if b[2] and b[0]<=bx<=b[0]+BW and b[1]<=by<=b[1]+BH:
+                b[2]=False; score+=10; vy*=-1; break
+        if by>H: lives-=1; bx,by=W//2,H-70; vx=random.choice([-1,1])*4; vy=-5
+        if lives==0: state="over"
+        if all(not b[2] for b in bricks): state="win"
+
+    screen.fill((8,8,20))
+    for b in bricks:
+        if b[2]: pygame.draw.rect(screen,b[3],(b[0],b[1],BW,BH),border_radius=4)
+    pygame.draw.rect(screen,(120,180,255),(px-PAD_W//2,H-60,PAD_W,PAD_H),border_radius=6)
+    pygame.draw.circle(screen,(255,255,200),(int(bx),int(by)),BALL_R)
+    screen.blit(font.render(f"Score:{score}  Lives:{'♥'*lives}",True,(200,220,255)),(10,10))
+    if state=="idle":
+        t=big.render("BREAKOUT",True,(255,180,60)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=font.render("Click to start",True,(200,200,255)); screen.blit(s,(W//2-s.get_width()//2,H//2+30))
+    if state=="over":
+        t=big.render("GAME OVER",True,(255,80,80)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=font.render(f"Score {score} — click restart",True,(200,150,150)); screen.blit(s,(W//2-s.get_width()//2,H//2+30))
+    if state=="win":
+        t=big.render("YOU WIN!",True,(80,255,120)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=font.render(f"Score {score} — click restart",True,(150,255,150)); screen.blit(s,(W//2-s.get_width()//2,H//2+30))
+    pygame.display.flip(); clock.tick(60)
