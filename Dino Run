@@ -1,0 +1,105 @@
+import pygame
+import random
+
+pygame.init()
+
+WIDTH, HEIGHT = 800, 400
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Dino Game")
+
+clock = pygame.time.Clock()
+
+WHITE = (255,255,255)
+BLACK = (0,0,0)
+
+# Dino
+dino = pygame.Rect(100, 300, 40, 40)
+velocity = 0
+gravity = 1
+jumping = False
+
+# Obstacles
+obstacles = []
+for i in range(3):
+    obstacles.append(pygame.Rect(800 + i*300, 310, 30, 60))
+
+speed = 6
+score = 0
+font = pygame.font.Font(None, 36)
+
+game_over = False
+
+def reset():
+    global speed, score, game_over
+    dino.y = 300
+    speed = 6
+    score = 0
+    game_over = False
+    obstacles.clear()
+    for i in range(3):
+        obstacles.append(pygame.Rect(800 + i*300, 310, 30, 60))
+
+running = True
+while running:
+    clock.tick(60)
+    screen.fill(WHITE)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        if event.type == pygame.KEYDOWN:
+            if not game_over:
+                if event.key == pygame.K_SPACE and not jumping:
+                    velocity = -15
+                    jumping = True
+            else:
+                if event.key == pygame.K_r:
+                    reset()
+
+    if not game_over:
+        # Jump physics
+        velocity += gravity
+        dino.y += velocity
+
+        if dino.y >= 300:
+            dino.y = 300
+            jumping = False
+
+        # Move obstacles
+        for obs in obstacles:
+            obs.x -= speed
+
+            if obs.x < -50:
+                obs.x = random.randint(800, 1200)
+                score += 1
+
+            if dino.colliderect(obs):
+                game_over = True
+
+        # Increase speed
+        speed = 6 + score * 0.2
+
+    # Draw ground
+    pygame.draw.line(screen, BLACK, (0, 340), (WIDTH, 340), 2)
+
+    # Draw dino
+    pygame.draw.rect(screen, BLACK, dino)
+
+    # Draw obstacles
+    for obs in obstacles:
+        pygame.draw.rect(screen, BLACK, obs)
+
+    # Score
+    text = font.render(f"Score: {int(score)}", True, BLACK)
+    screen.blit(text, (10,10))
+
+    if game_over:
+        over = font.render("GAME OVER", True, (255,0,0))
+        restart = font.render("Press R to Restart", True, BLACK)
+        screen.blit(over, (300,150))
+        screen.blit(restart, (260,200))
+
+    pygame.display.update()
+
+pygame.quit()
