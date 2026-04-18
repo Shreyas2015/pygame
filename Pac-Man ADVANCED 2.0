@@ -1,0 +1,178 @@
+import pygame
+import random
+
+pygame.init()
+
+WIDTH, HEIGHT = 840, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Pac-Man Advanced")
+
+clock = pygame.time.Clock()
+
+TILE = 30
+
+maze = [
+"111111111111111111111111",
+"100000000011000000000001",
+"101111111011011111111101",
+"101000001000010000001101",
+"101011101111111011101101",
+"100010100000000010100001",
+"111010101111111010101111",
+"100000100010000010000001",
+"101111101010111110111101",
+"100000001000000000000001",
+"111111111111111111111111",
+]
+
+rows = len(maze)
+cols = len(maze[0])
+
+player = [1, 1]
+direction = [0, 0]
+next_dir = [0, 0]
+
+ghosts = []
+for _ in range(4):
+    ghosts.append([cols-2, rows-2, random.choice([(1,0),(-1,0),(0,1),(0,-1)])])
+
+pellets = set()
+power_pellets = set()
+
+for y in range(rows):
+    for x in range(cols):
+        if maze[y][x] == "0":
+            pellets.add((x, y))
+
+# Add power pellets (corners)
+power_pellets.update([(1,1),(cols-2,1),(1,rows-2),(cols-2,rows-2)])
+
+score = 0
+lives = 3
+power_mode = False
+power_timer = 0
+
+font = pygame.font.Font(None, 36)
+
+def can_move(x, y):
+    return maze[y][x] == "0"
+
+def move_player():
+    global direction
+
+    nx = player[0] + next_dir[0]
+    ny = player[1] + next_dir[1]
+
+    if can_move(nx, ny):
+        direction = next_dir
+
+    nx = player[0] + direction[0]
+    ny = player[1] + direction[1]
+
+    if can_move(nx, ny):
+        player[0], player[1] = nx, ny
+
+def move_ghosts():
+    for g in ghosts:
+        if random.random() < 0.2:
+            g[2] = random.choice([(1,0),(-1,0),(0,1),(0,-1)])
+
+        nx = g[0] + g[2][0]
+        ny = g[1] + g[2][1]
+
+        if can_move(nx, ny):
+            g[0], g[1] = nx, ny
+
+def draw():
+    screen.fill((0,0,0))
+
+    # walls
+    for y in range(rows):
+        for x in range(cols):
+            if maze[y][x] == "1":
+                pygame.draw.rect(screen, (0,0,255),
+                    (x*TILE, y*TILE, TILE, TILE))
+
+    # pellets
+    for p in pellets:
+        pygame.draw.circle(screen, (255,255,255),
+            (p[0]*TILE+15, p[1]*TILE+15), 4)
+
+    # power pellets
+    for p in power_pellets:
+        pygame.draw.circle(screen, (255,255,0),
+            (p[0]*TILE+15, p[1]*TILE+15), 8)
+
+    # player
+    pygame.draw.circle(screen, (255,255,0),
+        (player[0]*TILE+15, player[1]*TILE+15), 12)
+
+    # ghosts
+    for g in ghosts:
+        color = (0,0,255) if power_mode else (255,0,0)
+        pygame.draw.circle(screen, color,
+            (g[0]*TILE+15, g[1]*TILE+15), 12)
+
+    screen.blit(font.render(f"Score: {score}", True, (255,255,255)), (10, HEIGHT-40))
+    screen.blit(font.render(f"Lives: {lives}", True, (255,255,255)), (200, HEIGHT-40))
+
+def check_collisions():
+    global score, lives, power_mode, power_timer
+
+    pos = tuple(player)
+
+    if pos in pellets:
+        pellets.remove(pos)
+        score += 10
+
+    if pos in power_pellets:
+        power_pellets.remove(pos)
+        power_mode = True
+        power_timer = 200
+
+    for g in ghosts:
+        if g[0] == player[0] and g[1] == player[1]:
+            if power_mode:
+                score += 50
+                g[0], g[1] = cols-2, rows-2
+            else:
+                lives -= 1
+                player[0], player[1] = 1,1
+
+def update_power():
+    global power_mode, power_timer
+    if power_mode:
+        power_timer -= 1
+        if power_timer <= 0:
+            power_mode = False
+
+running = True
+while running:
+    clock.tick(10)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                next_dir = [-1,0]
+            if event.key == pygame.K_RIGHT:
+                next_dir = [1,0]
+            if event.key == pygame.K_UP:
+                next_dir = [0,-1]
+            if event.key == pygame.K_DOWN:
+                next_dir = [0,1]
+
+    move_player()
+    move_ghosts()
+    check_collisions()
+    update_power()
+    draw()
+
+    if lives <= 0:
+        screen.blit(font.render("GAME OVER", True, (255,0,0)), (300,250))
+
+    pygame.display.update()
+
+pygame.quit()
