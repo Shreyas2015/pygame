@@ -1,0 +1,17 @@
+import pygame
+pygame.init()
+screen=pygame.display.set_mode((400,300))
+pygame.display.set_caption("Task 24: Fade")
+fade=pygame.Surface((400,300))
+a=0
+running=True
+while running:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+    a+=2
+    fade.set_alpha(a)
+    fade.fill((0,0,0))
+    screen.blit(fade,(0,0))
+    pygame.display.flip()
+    if a>=255: running=False
+pygame.quit()
