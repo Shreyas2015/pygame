@@ -1,0 +1,77 @@
+from ursina import *
+import random
+
+app = Ursina(title="Memory Match")
+window.color = color.rgb(20,25,50)
+camera.orthographic = True
+camera.fov = 6
+camera.position = (0,0,-20)
+
+COLS2,ROWS2=4,4; CW=1.4; CH=1.1; GAP=0.12
+CARD_COLS=[color.rgb(255,80,100),color.rgb(100,180,255),color.rgb(80,220,120),color.rgb(255,200,60),
+           color.rgb(200,80,255),color.rgb(255,140,60),color.rgb(60,220,200),color.rgb(180,255,100)]
+SYMBOLS2=["★","●","▲","♦","♠","♥","✿","✦"]
+
+cards_ents=[]; deck=[]; revealed=[]; matched=[]; selected=[]
+score_val=0; moves_val=0; state="idle"; rev_t=0
+
+score_txt=Text("Score:0  Moves:0",position=(-0.85,0.45),scale=1.4,color=color.rgb(180,220,255))
+title_txt=Text("MEMORY MATCH\nclick to start",position=(-0.22,0.05),scale=2,color=color.rgb(100,220,255))
+over_txt =Text("",position=(-0.22,0.05),scale=2,color=color.rgb(80,255,120))
+
+def make_deck2():
+    d=list(range(8))*2; random.shuffle(d); return d
+
+def make_cards():
+    global cards_ents,deck,revealed,matched,selected,score_val,moves_val,rev_t
+    for e in cards_ents: destroy(e); cards_ents.clear()
+    deck=make_deck2(); revealed=[False]*16; matched=[False]*16; selected=[]
+    score_val=0; moves_val=0; rev_t=0
+    for idx in range(16):
+        c=idx%COLS2; r=idx//COLS2
+        x=(c-COLS2/2+0.5)*(CW+GAP); y=(ROWS2/2-r-0.5)*(CH+GAP)
+        e=Entity(model="quad",color=CARD_COLS[deck[idx]],scale=(CW,CH,1),position=(x,y,0))
+        e.collider="box"; e.idx=idx
+        lbl=Text("?",parent=e,position=(0,0),scale=3,color=color.white,origin=(0,0))
+        e.label=lbl; cards_ents.append(e)
+    title_txt.visible=False; over_txt.text=""
+    score_txt.text="Score:0  Moves:0"
+
+def flip_card(e,show):
+    if show or matched[e.idx]:
+        e.color=color.rgb(240,240,255)
+        e.label.text=SYMBOLS2[deck[e.idx]]; e.label.color=CARD_COLS[deck[e.idx]]
+    else:
+        e.color=CARD_COLS[deck[e.idx]]; e.label.text="?"; e.label.color=color.white
+
+def input(key):
+    global state,selected,score_val,moves_val,rev_t
+    if key=="left mouse down":
+        if state in("idle","win"): make_cards(); state="playing"; return
+        if state!="playing": return
+        hit=mouse.hovered_entity
+        if hit in cards_ents:
+            i=hit.idx
+            if matched[i] or i in selected or revealed[i]: return
+            if len(selected)>=2: return
+            if time.time()-rev_t<0.5: return
+            revealed[i]=True; flip_card(hit,True); selected.append(i)
+            if len(selected)==2:
+                moves_val+=1
+                if deck[selected[0]]==deck[selected[1]]:
+                    matched[selected[0]]=matched[selected[1]]=True
+                    cards_ents[selected[0]].color=color.rgb(40,180,80)
+                    cards_ents[selected[1]].color=color.rgb(40,180,80)
+                    score_val+=50; selected=[]; rev_t=time.time()
+                    score_txt.text=f"Score:{score_val}  Moves:{moves_val}"
+                    if all(matched): state="win"; over_txt.text=f"YOU WIN!\nScore:{score_val}  Moves:{moves_val}\nclick restart"
+                else: rev_t=time.time()
+
+def update():
+    global selected
+    if state!="playing": return
+    if len(selected)==2 and time.time()-rev_t>0.9:
+        for i in selected: revealed[i]=False; flip_card(cards_ents[i],False)
+        selected=[]
+
+app.run()
