@@ -1,0 +1,19 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 42: Jump"
+
+player = Entity(model='cube', y=1)
+vel = 0
+
+def update():
+    global vel
+    vel -= 0.01
+    player.y += vel
+
+def input(key):
+    global vel
+    if key == 'space':
+        vel = 0.2
+
+app.run()
