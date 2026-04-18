@@ -1,0 +1,17 @@
+import pygame
+pygame.init()
+screen=pygame.display.set_mode((800,600))
+pygame.display.set_caption("Task 6: Scrolling")
+bg=pygame.Surface((800,600))
+bg.fill((100,100,255))
+x=0
+running=True
+while running:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+    x-=2
+    if x<=-800: x=0
+    screen.blit(bg,(x,0))
+    screen.blit(bg,(x+800,0))
+    pygame.display.flip()
+pygame.quit()
