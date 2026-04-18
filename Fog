@@ -1,0 +1,8 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 50: Fog"
+
+scene.fog_density = 0.1
+
+app.run()
