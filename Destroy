@@ -1,0 +1,12 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 48: Destroy"
+
+cube = Entity(model='cube')
+
+def input(key):
+    if key == 'left mouse down':
+        destroy(cube)
+
+app.run()
