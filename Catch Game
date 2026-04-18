@@ -1,0 +1,51 @@
+import pygame
+import random
+
+pygame.init()
+
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("Catch Game")
+
+player = pygame.Rect(350, 550, 100, 20)
+ball = pygame.Rect(random.randint(0, 780), 0, 20, 20)
+
+speed = 5
+ball_speed = 5
+score = 0
+
+font = pygame.font.Font(None, 36)
+
+running = True
+while running:
+    screen.fill((0, 0, 0))
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        player.x -= speed
+    if keys[pygame.K_RIGHT]:
+        player.x += speed
+
+    ball.y += ball_speed
+
+    if ball.colliderect(player):
+        score += 1
+        ball.x = random.randint(0, 780)
+        ball.y = 0
+
+    if ball.y > 600:
+        ball.y = 0
+        ball.x = random.randint(0, 780)
+
+    pygame.draw.rect(screen, (0, 255, 0), player)
+    pygame.draw.ellipse(screen, (255, 0, 0), ball)
+
+    text = font.render(f"Score: {score}", True, (255, 255, 255))
+    screen.blit(text, (10, 10))
+
+    pygame.display.update()
+
+pygame.quit()
