@@ -1,0 +1,43 @@
+import pygame
+pygame.init()
+
+screen = pygame.display.set_mode((800,600))
+pygame.display.set_caption("Task 3: Animation")
+
+idle = [pygame.Surface((40,40))]
+idle[0].fill((0,255,0))
+
+walk = []
+for i in range(4):
+    s = pygame.Surface((40,40))
+    s.fill((0,200-i*40,255))
+    walk.append(s)
+
+x,y = 100,100
+frame = 0
+
+running = True
+while running:
+    moving = False
+
+    for e in pygame.event.get():
+        if e.type == pygame.QUIT:
+            running = False
+
+    keys = pygame.key.get_pressed()
+
+    if keys[pygame.K_RIGHT]:
+        x += 5
+        moving = True
+
+    if moving:
+        frame += 0.2
+        img = walk[int(frame)%len(walk)]
+    else:
+        img = idle[0]
+
+    screen.fill((0,0,0))
+    screen.blit(img,(x,y))
+
+    pygame.display.flip()
+pygame.quit()
