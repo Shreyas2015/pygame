@@ -1,0 +1,7 @@
+import pygame
+pygame.init()
+pygame.display.set_caption("Task 16: Save Score")
+score=10
+with open("score.txt","w") as f:
+    f.write(str(score))
+pygame.quit()
