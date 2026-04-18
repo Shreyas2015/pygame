@@ -1,0 +1,110 @@
+import pygame
+import random
+
+pygame.init()
+
+WIDTH, HEIGHT = 500, 700
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Car Racing")
+
+clock = pygame.time.Clock()
+
+WHITE = (255,255,255)
+GRAY = (40,40,40)
+RED = (255,0,0)
+BLUE = (0,150,255)
+YELLOW = (255,255,0)
+
+# Player
+player = pygame.Rect(220, 550, 60, 100)
+
+# Lanes
+lanes = [120, 200, 280, 360]
+
+# Enemies
+enemies = []
+for i in range(4):
+    enemies.append(pygame.Rect(random.choice(lanes), random.randint(-600, -100), 60, 100))
+
+speed = 6
+score = 0
+font = pygame.font.Font(None, 36)
+
+game_over = False
+
+def reset_game():
+    global player, enemies, speed, score, game_over
+    player.x = 220
+    enemies.clear()
+    for i in range(4):
+        enemies.append(pygame.Rect(random.choice(lanes), random.randint(-600, -100), 60, 100))
+    speed = 6
+    score = 0
+    game_over = False
+
+running = True
+while running:
+    clock.tick(60)
+    screen.fill(GRAY)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if game_over and event.key == pygame.K_r:
+                reset_game()
+
+    keys = pygame.key.get_pressed()
+
+    if not game_over:
+        # Movement
+        if keys[pygame.K_LEFT]:
+            player.x -= 8
+        if keys[pygame.K_RIGHT]:
+            player.x += 8
+
+        player.x = max(100, min(player.x, 380))
+
+        # Enemies
+        for enemy in enemies:
+            enemy.y += speed
+
+            if enemy.y > HEIGHT:
+                enemy.y = random.randint(-200, -100)
+                enemy.x = random.choice(lanes)
+                score += 1
+
+            if player.colliderect(enemy):
+                game_over = True
+
+        # Increase difficulty
+        speed = 6 + score * 0.1
+
+    # Road lines animation
+    for i in range(0, HEIGHT, 40):
+        pygame.draw.rect(screen, WHITE, (245, i + (score * 5 % 40), 10, 20))
+
+    # Lane borders
+    pygame.draw.line(screen, YELLOW, (100,0), (100,HEIGHT), 5)
+    pygame.draw.line(screen, YELLOW, (400,0), (400,HEIGHT), 5)
+
+    # Draw player
+    pygame.draw.rect(screen, BLUE, player)
+
+    # Draw enemies
+    for enemy in enemies:
+        pygame.draw.rect(screen, RED, enemy)
+
+    # Score
+    score_text = font.render(f"Score: {int(score)}", True, WHITE)
+    screen.blit(score_text, (10,10))
+
+    if game_over:
+        over = font.render("GAME OVER", True, RED)
+        restart = font.render("Press R to Restart", True, WHITE)
+        screen.blit(over, (150, 300))
+        screen.blit(restart, (120, 350))
+
+    pygame.display.update()
+
+pygame.quit()
