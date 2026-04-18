@@ -1,0 +1,19 @@
+
+import pygame
+pygame.init()
+screen=pygame.display.set_mode((400,300))
+pygame.display.set_caption("Task 7: Timer")
+font=pygame.font.SysFont(None,40)
+time=10
+clock=pygame.time.Clock()
+running=True
+while running:
+    dt=clock.tick(60)/1000
+    time-=dt
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+    screen.fill((0,0,0))
+    screen.blit(font.render(str(int(time)),True,(255,255,255)),(150,100))
+    if time<=0: running=False
+    pygame.display.flip()
+pygame.quit()
