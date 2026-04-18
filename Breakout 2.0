@@ -1,0 +1,76 @@
+from ursina import *
+import random
+
+app = Ursina(title="Breakout")
+window.color = color.rgb(8,8,20)
+camera.orthographic = True
+camera.fov = 8
+camera.position = (0,0,-20)
+HW = camera.fov * window.aspect_ratio
+HH = camera.fov
+
+COLS,ROWS = 9,6
+BW,BH = (HW*2*0.9)/COLS, 0.55
+BRICK_COLORS = [
+    color.rgb(255,80,80),color.rgb(255,150,60),color.rgb(255,220,60),
+    color.rgb(80,220,80),color.rgb(60,160,255),color.rgb(180,80,255)
+]
+
+paddle = Entity(model="quad",color=color.rgb(120,180,255),scale=(2.2,0.22,1),position=(0,-HH+0.8,0))
+ball   = Entity(model="circle",color=color.rgb(255,255,200),scale=0.22,position=(0,-HH+1.2,0))
+
+bricks=[]
+score_val=0; lives=3; state="idle"
+bvx=0.1; bvy=0.12
+
+score_txt=Text("Score:0  Lives:♥♥♥",position=(-0.85,0.45),scale=1.4,color=color.rgb(200,220,255))
+title_txt=Text("BREAKOUT\nclick to start",position=(-0.18,0.05),scale=2,color=color.rgb(255,180,60))
+
+def make_bricks():
+    global bricks
+    for b in bricks: destroy(b)
+    bricks=[]
+    for r in range(ROWS):
+        for c in range(COLS):
+            x=-HW*0.85 + c*(BW+0.08) + BW/2
+            y= HH-1.2  - r*(BH+0.1)
+            e=Entity(model="quad",color=BRICK_COLORS[r],scale=(BW,BH,1),position=(x,y,0))
+            e.alive=True
+            bricks.append(e)
+
+def reset():
+    global bvx,bvy,score_val,lives,state
+    make_bricks(); score_val=0; lives=3
+    ball.position=(0,-HH+1.2,0)
+    bvx=random.choice([-1,1])*0.10; bvy=0.13
+    state="playing"; title_txt.visible=False
+    score_txt.text="Score:0  Lives:♥♥♥"
+
+def input(key):
+    if key=="left mouse down" and state in("idle","over","win"): reset()
+
+def update():
+    global bvx,bvy,score_val,lives,state
+    if state!="playing": return
+    paddle.x = (mouse.x*2)*HW
+    paddle.x = clamp(paddle.x,-HW+1.1,HW-1.1)
+
+    ball.x+=bvx; ball.y+=bvy
+    if abs(ball.x)>=HW-0.12: bvx*=-1
+    if ball.y>=HH-0.12: bvy*=-1
+    # paddle
+    if ball.y<=paddle.y+0.15 and abs(ball.x-paddle.x)<1.1:
+        bvy=abs(bvy); bvx+=(ball.x-paddle.x)*0.03
+    # bricks
+    for b in bricks:
+        if b.alive and abs(ball.x-b.x)<BW/2+0.1 and abs(ball.y-b.y)<BH/2+0.1:
+            b.alive=False; b.visible=False; bvy*=-1
+            score_val+=10; score_txt.text=f"Score:{score_val}  Lives:{'♥'*lives}"; break
+    if ball.y<-HH-0.3:
+        lives-=1; ball.position=(0,-HH+1.2,0); bvx=random.choice([-1,1])*0.10; bvy=0.13
+        score_txt.text=f"Score:{score_val}  Lives:{'♥'*lives}"
+        if lives==0: state="over"; title_txt.text="GAME OVER\nclick restart"; title_txt.visible=True
+    if all(not b.alive for b in bricks):
+        state="win"; title_txt.text="YOU WIN!\nclick restart"; title_txt.visible=True
+
+app.run()
