@@ -1,0 +1,11 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 36: Third Person"
+
+player = Entity(model='cube')
+
+camera.parent = player
+camera.position = (0,2,-5)
+
+app.run()
