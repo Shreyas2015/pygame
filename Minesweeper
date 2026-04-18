@@ -1,0 +1,84 @@
+import pygame, sys, random
+pygame.init()
+CELL=44; COLS,ROWS=14,12; MINES=25
+W,H=COLS*CELL, ROWS*CELL+50
+screen=pygame.display.set_mode((W,H))
+pygame.display.set_caption("Minesweeper")
+clock=pygame.time.Clock()
+font=pygame.font.SysFont("Arial",18,bold=True)
+big=pygame.font.SysFont("Arial",36,bold=True)
+NUM_COLS=[(0,0,0),(20,80,255),(0,160,0),(220,30,30),(0,0,160),(160,0,0),(0,180,180),(0,0,0),(100,100,100)]
+
+def make_board():
+    board=[[0]*COLS for _ in range(ROWS)]
+    rev=[[False]*COLS for _ in range(ROWS)]
+    flag=[[False]*COLS for _ in range(ROWS)]
+    mines=set()
+    while len(mines)<MINES:
+        mines.add((random.randint(0,ROWS-1),random.randint(0,COLS-1)))
+    for r,c in mines: board[r][c]=-1
+    for r in range(ROWS):
+        for c in range(COLS):
+            if board[r][c]==-1: continue
+            board[r][c]=sum(1 for dr in[-1,0,1] for dc in[-1,0,1]
+                            if 0<=r+dr<ROWS and 0<=c+dc<COLS and board[r+dr][c+dc]==-1)
+    return board,rev,flag,mines
+
+def flood(board,rev,r,c):
+    if not(0<=r<ROWS and 0<=c<COLS) or rev[r][c] or board[r][c]==-1: return
+    rev[r][c]=True
+    if board[r][c]==0:
+        for dr in[-1,0,1]:
+            for dc in[-1,0,1]: flood(board,rev,r+dr,c+dc)
+
+board,rev,flag,mines=make_board()
+state="idle"; flags_left=MINES
+
+while True:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: sys.exit()
+        if e.type==pygame.MOUSEBUTTONDOWN:
+            mx,my=e.pos; c,r=mx//CELL,(my-50)//CELL
+            if 0<=r<ROWS and 0<=c<COLS:
+                if state in("idle","playing"):
+                    state="playing"
+                    if e.button==1 and not flag[r][c]:
+                        if board[r][c]==-1:
+                            for mr,mc in mines: rev[mr][mc]=True
+                            state="over"
+                        else: flood(board,rev,r,c)
+                    elif e.button==3:
+                        if not rev[r][c]:
+                            flag[r][c]=not flag[r][c]
+                            flags_left+=1 if not flag[r][c] else -1
+            elif my<50 and state in("over","win","idle"):
+                board,rev,flag,mines=make_board(); state="idle"; flags_left=MINES
+        if sum(rev[r][c] for r in range(ROWS) for c in range(COLS))==ROWS*COLS-MINES and state=="playing":
+            state="win"
+
+    screen.fill((30,30,40))
+    pygame.draw.rect(screen,(50,50,70),(0,0,W,50))
+    screen.blit(font.render(f"Mines: {flags_left}",True,(255,120,120)),(10,14))
+    screen.blit(font.render("Click here to restart",True,(180,180,220)),(W//2-90,14))
+    for r in range(ROWS):
+        for c in range(COLS):
+            x,y=c*CELL,r*CELL+50
+            if rev[r][c]:
+                col=(220,30,30) if board[r][c]==-1 else (200,200,210)
+                pygame.draw.rect(screen,col,(x+1,y+1,CELL-2,CELL-2),border_radius=3)
+                if board[r][c]>0:
+                    t=font.render(str(board[r][c]),True,NUM_COLS[board[r][c]])
+                    screen.blit(t,(x+CELL//2-t.get_width()//2,y+CELL//2-t.get_height()//2))
+                elif board[r][c]==-1:
+                    pygame.draw.circle(screen,(10,10,10),(x+CELL//2,y+CELL//2),10)
+            else:
+                pygame.draw.rect(screen,(70,80,100),(x+1,y+1,CELL-2,CELL-2),border_radius=3)
+                if flag[r][c]:
+                    pygame.draw.polygon(screen,(255,60,60),[(x+12,y+8),(x+12,y+30),(x+32,y+18)])
+    if state in("over","win"):
+        overlay=pygame.Surface((W,H),pygame.SRCALPHA)
+        overlay.fill((0,0,0,140)); screen.blit(overlay,(0,0))
+        msg="💥 BOOM! Game Over" if state=="over" else "🎉 You Win!"
+        col=(255,80,80) if state=="over" else (80,255,120)
+        t=big.render(msg,True,col); screen.blit(t,(W//2-t.get_width()//2,H//2-20))
+    pygame.display.flip(); clock.tick(30)
