@@ -1,0 +1,11 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 45: Moving Platform"
+
+platform = Entity(model='cube')
+
+def update():
+    platform.x = sin(time.time()) * 3
+
+app.run()
