@@ -1,0 +1,11 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 46: Animation"
+
+cube = Entity(model='cube')
+
+def update():
+    cube.scale_x = lerp(cube.scale_x, 2, time.dt)
+
+app.run()
