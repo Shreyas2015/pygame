@@ -1,0 +1,19 @@
+import pygame
+pygame.init()
+screen=pygame.display.set_mode((800,600))
+pygame.display.set_caption("Task 12: Shooting")
+player=pygame.Rect(100,300,40,40)
+bullets=[]
+running=True
+while running:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+        if e.type==pygame.KEYDOWN:
+            if e.key==pygame.K_SPACE:
+                bullets.append(pygame.Rect(player.x,player.y,10,5))
+    for b in bullets: b.x+=5
+    screen.fill((0,0,0))
+    pygame.draw.rect(screen,(0,255,0),player)
+    for b in bullets: pygame.draw.rect(screen,(255,255,0),b)
+    pygame.display.flip()
+pygame.quit()
