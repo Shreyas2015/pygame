@@ -1,0 +1,99 @@
+from ursina import *
+import random
+
+app = Ursina(title="Space Invaders")
+window.color = color.rgb(5,5,18)
+camera.orthographic = True
+camera.fov = 8
+camera.position = (0,0,-20)
+HW = camera.fov * window.aspect_ratio
+HH = camera.fov
+
+COLS2 = [(255,80,80),(255,180,60),(80,200,255),(100,255,100)]
+
+player = Entity(model="triangle",color=color.rgb(80,180,255),scale=(0.5,0.6,1),position=(0,-HH+0.8,0))
+invaders=[]; bullets=[]; inv_bullets=[]
+inv_dir=1; inv_timer=0; shoot_timer=0; shoot_cd=0
+score_val=0; lives=3; state="idle"
+
+score_txt=Text("Score:0  Lives:♥♥♥",position=(-0.85,0.45),scale=1.4,color=color.rgb(180,220,255))
+title_txt=Text("SPACE INVADERS\nclick to start\n← → move  Space shoot",position=(-0.35,0.1),scale=1.6,color=color.rgb(80,200,255))
+
+def make_invaders():
+    global invaders
+    for e in invaders: destroy(e)
+    invaders=[]
+    for r in range(4):
+        for c in range(9):
+            x=-HW*0.8+c*(HW*1.6/8)
+            y= HH-1.5-r*1.0
+            e=Entity(model="quad",color=color.rgb(*COLS2[r]),scale=(0.7,0.45,1),position=(x,y,0))
+            e.alive=True
+            invaders.append(e)
+
+def reset():
+    global inv_dir,inv_timer,shoot_timer,shoot_cd,score_val,lives,state
+    make_invaders()
+    for b in bullets: destroy(b); bullets.clear()
+    for b in inv_bullets: destroy(b); inv_bullets.clear()
+    inv_dir=1; score_val=0; lives=3; state="playing"
+    player.x=0; title_txt.visible=False
+    score_txt.text="Score:0  Lives:♥♥♥"
+
+def input(key):
+    global state
+    if key=="left mouse down" and state in("idle","over","win"): reset()
+    if key=="space" and state=="playing" and shoot_cd<=0:
+        b=Entity(model="quad",color=color.rgb(255,255,100),scale=(0.08,0.3,1),position=(player.x,player.y+0.5,0))
+        bullets.append(b)
+
+def update():
+    global inv_dir,inv_timer,shoot_timer,shoot_cd,score_val,lives,state
+    if state!="playing": return
+    if held_keys["left arrow"]  and player.x>-HW+0.3: player.x-=5*time.dt
+    if held_keys["right arrow"] and player.x< HW-0.3: player.x+=5*time.dt
+    shoot_cd=max(0,shoot_cd-1)
+
+    inv_timer+=time.dt
+    alive_inv=[i for i in invaders if i.alive]
+    spd=max(0.15,0.6-len(alive_inv)*0.005)
+    if inv_timer>=spd:
+        inv_timer=0
+        xs=[i.x for i in alive_inv] if alive_inv else [0]
+        if (inv_dir==1 and max(xs)>HW-0.8) or (inv_dir==-1 and min(xs)<-HW+0.8):
+            inv_dir*=-1
+            for i in invaders:
+                if i.alive: i.y-=0.4
+        for i in invaders:
+            if i.alive: i.x+=inv_dir*0.35
+
+    shoot_timer+=time.dt
+    if shoot_timer>=1.2 and alive_inv:
+        shoot_timer=0
+        shooter=random.choice(alive_inv)
+        b=Entity(model="quad",color=color.rgb(255,80,80),scale=(0.08,0.28,1),position=(shooter.x,shooter.y-0.3,0))
+        inv_bullets.append(b)
+
+    for b in bullets[:]:
+        b.y+=0.2
+        for i in invaders:
+            if i.alive and abs(b.x-i.x)<0.38 and abs(b.y-i.y)<0.28:
+                i.alive=False; i.visible=False; destroy(b); bullets.remove(b)
+                score_val+=10; score_txt.text=f"Score:{score_val}  Lives:{'♥'*lives}"; break
+        else:
+            if b.y>HH+0.5: destroy(b); bullets.remove(b)
+
+    for b in inv_bullets[:]:
+        b.y-=0.12
+        if abs(b.x-player.x)<0.3 and abs(b.y-player.y)<0.3:
+            lives-=1; destroy(b); inv_bullets.remove(b)
+            score_txt.text=f"Score:{score_val}  Lives:{'♥'*lives}"
+            if lives==0: state="over"; title_txt.text="GAME OVER\nclick restart"; title_txt.visible=True
+        elif b.y<-HH-0.5: destroy(b); inv_bullets.remove(b)
+
+    if any(i.alive and i.y<-HH+1 for i in invaders):
+        state="over"; title_txt.text="GAME OVER\nclick restart"; title_txt.visible=True
+    if not alive_inv:
+        state="win"; title_txt.text="YOU WIN!\nclick restart"; title_txt.visible=True
+
+app.run()
