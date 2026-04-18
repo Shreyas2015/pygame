@@ -1,0 +1,8 @@
+import pygame
+pygame.init()
+pygame.display.set_caption("Task 19: Boss")
+health=100
+while health>0:
+    health-=1
+    if health<50: print("Phase 2")
+pygame.quit()
