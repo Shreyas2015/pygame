@@ -1,0 +1,137 @@
+import pygame
+import random
+
+pygame.init()
+
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Pac-Man")
+
+clock = pygame.time.Clock()
+
+TILE = 30
+
+# Maze (1 = wall, 0 = path)
+maze = [
+"111111111111111111111111",
+"100000000011000000000001",
+"101111111011011111111101",
+"101000001000010000001101",
+"101011101111111011101101",
+"100010100000000010100001",
+"111010101111111010101111",
+"100000100010000010000001",
+"101111101010111110111101",
+"100000001000000000000001",
+"111111111111111111111111",
+]
+
+rows = len(maze)
+cols = len(maze[0])
+
+# Player
+player_x, player_y = 1, 1
+dx, dy = 0, 0
+
+# Ghost
+ghost_x, ghost_y = cols-2, rows-2
+
+# Pellets
+pellets = set()
+for y in range(rows):
+    for x in range(cols):
+        if maze[y][x] == "0":
+            pellets.add((x, y))
+
+score = 0
+font = pygame.font.Font(None, 36)
+
+def draw():
+    screen.fill((0,0,0))
+
+    for y in range(rows):
+        for x in range(cols):
+            if maze[y][x] == "1":
+                pygame.draw.rect(screen, (0,0,255),
+                                 (x*TILE, y*TILE, TILE, TILE))
+
+    # pellets
+    for p in pellets:
+        pygame.draw.circle(screen, (255,255,0),
+                           (p[0]*TILE+TILE//2, p[1]*TILE+TILE//2), 5)
+
+    # player
+    pygame.draw.circle(screen, (255,255,0),
+                       (player_x*TILE+TILE//2, player_y*TILE+TILE//2), 12)
+
+    # ghost
+    pygame.draw.circle(screen, (255,0,0),
+                       (ghost_x*TILE+TILE//2, ghost_y*TILE+TILE//2), 12)
+
+    text = font.render(f"Score: {score}", True, (255,255,255))
+    screen.blit(text, (10, HEIGHT-40))
+
+def move_player():
+    global player_x, player_y
+
+    nx = player_x + dx
+    ny = player_y + dy
+
+    if maze[ny][nx] == "0":
+        player_x, player_y = nx, ny
+
+def move_ghost():
+    global ghost_x, ghost_y
+
+    options = [(1,0), (-1,0), (0,1), (0,-1)]
+    random.shuffle(options)
+
+    for d in options:
+        nx = ghost_x + d[0]
+        ny = ghost_y + d[1]
+        if maze[ny][nx] == "0":
+            ghost_x, ghost_y = nx, ny
+            break
+
+running = True
+game_over = False
+
+while running:
+    clock.tick(10)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                dx, dy = -1, 0
+            if event.key == pygame.K_RIGHT:
+                dx, dy = 1, 0
+            if event.key == pygame.K_UP:
+                dx, dy = 0, -1
+            if event.key == pygame.K_DOWN:
+                dx, dy = 0, 1
+
+    if not game_over:
+        move_player()
+        move_ghost()
+
+        # eat pellet
+        if (player_x, player_y) in pellets:
+            pellets.remove((player_x, player_y))
+            score += 10
+
+        # collision
+        if player_x == ghost_x and player_y == ghost_y:
+            game_over = True
+
+    draw()
+
+    if game_over:
+        over_text = font.render("GAME OVER", True, (255,0,0))
+        screen.blit(over_text, (WIDTH//2-100, HEIGHT//2))
+
+    pygame.display.update()
+
+pygame.quit()
