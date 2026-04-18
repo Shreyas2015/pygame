@@ -1,0 +1,12 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 39: Voxel"
+
+block = Entity(model='cube', collider='box')
+
+def input(key):
+    if key == 'left mouse down':
+        Entity(model='cube', position=mouse.world_point, collider='box')
+
+app.run()
