@@ -1,0 +1,35 @@
+from ursina import *
+
+app = Ursina()
+
+player = Entity(model='cube', color=color.orange, scale=(1,2,1), y=1)
+ground = Entity(model='plane', scale=20, collider='box')
+
+speed = 5
+jump = False
+velocity = 0
+
+def update():
+    global velocity, jump
+
+    if held_keys['w']:
+        player.z += time.dt * speed
+    if held_keys['s']:
+        player.z -= time.dt * speed
+    if held_keys['a']:
+        player.x -= time.dt * speed
+    if held_keys['d']:
+        player.x += time.dt * speed
+
+    if held_keys['space'] and not jump:
+        velocity = 5
+        jump = True
+
+    velocity -= 9.8 * time.dt
+    player.y += velocity * time.dt
+
+    if player.y <= 1:
+        player.y = 1
+        jump = False
+
+app.run()
