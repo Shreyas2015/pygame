@@ -1,0 +1,257 @@
+import pygame
+import math
+import random
+import sys
+
+pygame.init()
+
+W, H = 800, 500
+screen = pygame.display.set_mode((W, H))
+pygame.display.set_caption("Asteroid Dodge")
+clock = pygame.time.Clock()
+
+# ── colours ──────────────────────────────────────────────────────────────────
+BG       = (5,  8,  15)
+STAR_COL = (200, 220, 255)
+SHIP_COL = (120, 180, 255)
+SHIP_FILL= (40,  90, 180, 60)
+ENGINE   = (100, 220, 255)
+HUD_COL  = (150, 200, 255)
+PARTICLE = (120, 180, 255)
+
+ASTEROID_COLORS = [
+    (80, 110, 140), (70, 100, 130), (90, 120, 150),
+    (60,  90, 120), (100, 130, 160),
+]
+
+font_lg = pygame.font.SysFont("Arial", 32, bold=True)
+font_md = pygame.font.SysFont("Arial", 20)
+font_sm = pygame.font.SysFont("Arial", 16)
+
+# ── stars (static) ───────────────────────────────────────────────────────────
+stars = [(random.randint(0, W), random.randint(0, H),
+          random.uniform(0.5, 1.8), random.uniform(0.3, 1.0))
+         for _ in range(100)]
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+
+def make_asteroid():
+    edge = random.randint(0, 3)
+    speed = random.uniform(1.5, 2.5)
+    if   edge == 0: x, y = random.randint(0, W), -25
+    elif edge == 1: x, y = W + 25, random.randint(0, H)
+    elif edge == 2: x, y = random.randint(0, W), H + 25
+    else:           x, y = -25, random.randint(0, H)
+
+    angle_to_center = math.atan2(H/2 - y, W/2 - x) + random.uniform(-0.8, 0.8)
+    vx = math.cos(angle_to_center) * speed
+    vy = math.sin(angle_to_center) * speed
+
+    r = random.randint(16, 36)
+    n = random.randint(7, 11)
+    pts = []
+    for i in range(n):
+        a = (i / n) * math.pi * 2
+        d = r * random.uniform(0.65, 1.3)
+        pts.append((math.cos(a) * d, math.sin(a) * d))
+
+    return {
+        "x": float(x), "y": float(y),
+        "vx": vx, "vy": vy,
+        "r": r, "pts": pts,
+        "rot": 0.0, "rot_v": random.uniform(-0.025, 0.025),
+        "color": random.choice(ASTEROID_COLORS),
+    }
+
+
+def make_particles(x, y, color, n=20):
+    ps = []
+    for _ in range(n):
+        a = random.uniform(0, math.pi * 2)
+        s = random.uniform(1.5, 4.0)
+        ps.append({
+            "x": x, "y": y,
+            "vx": math.cos(a) * s, "vy": math.sin(a) * s,
+            "life": 1.0, "color": color,
+        })
+    return ps
+
+
+def draw_stars(surf):
+    for sx, sy, sr, sb in stars:
+        c = tuple(int(v * sb) for v in STAR_COL)
+        pygame.draw.circle(surf, c, (int(sx), int(sy)), int(sr))
+
+
+def draw_ship(surf, x, y, alpha=255):
+    pts_local = [( 0, -14), ( 10,  10), ( 0,   6), (-10,  10)]
+    pts_world = [(int(x + px), int(y + py)) for px, py in pts_local]
+    # filled body (semi-transparent via a temp surface)
+    body = pygame.Surface((W, H), pygame.SRCALPHA)
+    pygame.draw.polygon(body, (*SHIP_FILL[:3], min(alpha, 60)), pts_world)
+    surf.blit(body, (0, 0))
+    # outline
+    col = tuple(int(v * alpha / 255) for v in SHIP_COL)
+    pygame.draw.polygon(surf, col, pts_world, 2)
+    # engine glow
+    glow_r = random.randint(3, 5)
+    pygame.draw.circle(surf, ENGINE, (int(x), int(y + 10)), glow_r)
+
+
+def draw_asteroid(surf, a):
+    rotated = []
+    cos_r, sin_r = math.cos(a["rot"]), math.sin(a["rot"])
+    for px, py in a["pts"]:
+        rx = px * cos_r - py * sin_r
+        ry = px * sin_r + py * cos_r
+        rotated.append((int(a["x"] + rx), int(a["y"] + ry)))
+    pygame.draw.polygon(surf, a["color"], rotated)
+    pygame.draw.polygon(surf, (170, 190, 200), rotated, 2)
+
+
+def draw_hud(surf, score, level, lives):
+    s = font_sm.render(f"score  {score}", True, HUD_COL)
+    l = font_sm.render(f"level  {level}", True, HUD_COL)
+    h = font_sm.render("♥ " * lives, True, (255, 100, 120))
+    surf.blit(s, (14, 10))
+    surf.blit(l, (160, 10))
+    surf.blit(h, (300, 10))
+
+
+def draw_centered(surf, text, font, color, cy):
+    img = font.render(text, True, color)
+    surf.blit(img, (W // 2 - img.get_width() // 2, cy))
+
+
+# ── game state ────────────────────────────────────────────────────────────────
+
+def reset():
+    return {
+        "ship_x": float(W // 2), "ship_y": float(H * 0.72),
+        "tx": float(W // 2),     "ty": float(H * 0.72),
+        "asteroids": [], "particles": [],
+        "score": 0, "level": 1, "lives": 3,
+        "frame": 0, "spawn_timer": 0, "invincible": 0,
+        "state": "idle",   # idle | playing | over
+    }
+
+
+gs = reset()
+
+# ── main loop ─────────────────────────────────────────────────────────────────
+running = True
+while running:
+    dt = clock.tick(60)
+
+    # ── events ────────────────────────────────────────────────────────────────
+    for ev in pygame.event.get():
+        if ev.type == pygame.QUIT:
+            running = False
+        if ev.type == pygame.MOUSEBUTTONDOWN:
+            if gs["state"] in ("idle", "over"):
+                gs = reset()
+                gs["state"] = "playing"
+        if ev.type == pygame.MOUSEMOTION:
+            mx, my = ev.pos
+            gs["tx"], gs["ty"] = float(mx), float(my)
+
+    # ── update ────────────────────────────────────────────────────────────────
+    if gs["state"] == "playing":
+        gs["frame"] += 1
+
+        # smooth ship movement
+        gs["ship_x"] += (gs["tx"] - gs["ship_x"]) * 0.12
+        gs["ship_y"] += (gs["ty"] - gs["ship_y"]) * 0.12
+        gs["ship_x"] = max(14, min(W - 14, gs["ship_x"]))
+        gs["ship_y"] = max(14, min(H - 14, gs["ship_y"]))
+
+        # spawn
+        spawn_rate = max(18, 60 - gs["level"] * 5)
+        gs["spawn_timer"] += 1
+        if gs["spawn_timer"] >= spawn_rate:
+            gs["asteroids"].append(make_asteroid())
+            gs["spawn_timer"] = 0
+
+        # level up every 300 frames
+        if gs["frame"] % 300 == 0:
+            gs["level"] += 1
+
+        # move asteroids
+        for a in gs["asteroids"]:
+            a["x"] += a["vx"]
+            a["y"] += a["vy"]
+            a["rot"] += a["rot_v"]
+
+        # cull off-screen
+        gs["asteroids"] = [
+            a for a in gs["asteroids"]
+            if -70 < a["x"] < W + 70 and -70 < a["y"] < H + 70
+        ]
+
+        # collision
+        if gs["invincible"] <= 0:
+            for i, a in enumerate(gs["asteroids"]):
+                dx = gs["ship_x"] - a["x"]
+                dy = gs["ship_y"] - a["y"]
+                dist = math.sqrt(dx*dx + dy*dy)
+                if dist < a["r"] * 0.7 + 9:
+                    gs["particles"] += make_particles(gs["ship_x"], gs["ship_y"], SHIP_COL)
+                    gs["asteroids"].pop(i)
+                    gs["lives"] -= 1
+                    gs["invincible"] = 120
+                    if gs["lives"] <= 0:
+                        gs["state"] = "over"
+                    break
+
+        if gs["invincible"] > 0:
+            gs["invincible"] -= 1
+
+        # score
+        if gs["frame"] % 10 == 0:
+            gs["score"] += 1
+
+    # update particles
+    for p in gs["particles"]:
+        p["x"] += p["vx"]
+        p["y"] += p["vy"]
+        p["life"] -= 0.035
+    gs["particles"] = [p for p in gs["particles"] if p["life"] > 0]
+
+    # ── draw ──────────────────────────────────────────────────────────────────
+    screen.fill(BG)
+    draw_stars(screen)
+
+    for a in gs["asteroids"]:
+        draw_asteroid(screen, a)
+
+    # particles
+    for p in gs["particles"]:
+        alpha = int(p["life"] * 255)
+        c = tuple(min(255, v) for v in p["color"])
+        pygame.draw.circle(screen, c, (int(p["x"]), int(p["y"])), 3)
+
+    # ship
+    if gs["state"] in ("idle", "playing"):
+        inv = gs["invincible"]
+        if inv > 0:
+            alpha = 80 if (inv // 6) % 2 == 0 else 255
+        else:
+            alpha = 255
+        draw_ship(screen, gs["ship_x"], gs["ship_y"], alpha)
+
+    draw_hud(screen, gs["score"], gs["level"], gs["lives"])
+
+    if gs["state"] == "idle":
+        draw_centered(screen, "ASTEROID DODGE", font_lg, HUD_COL, H // 2 - 30)
+        draw_centered(screen, "click to start  •  move mouse to steer", font_sm,
+                      (100, 150, 200), H // 2 + 16)
+
+    if gs["state"] == "over":
+        draw_centered(screen, "GAME OVER", font_lg, HUD_COL, H // 2 - 30)
+        draw_centered(screen, f"final score: {gs['score']}   •   click to restart",
+                      font_sm, (100, 150, 200), H // 2 + 16)
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
