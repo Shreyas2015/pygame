@@ -1,0 +1,14 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 31: Collect Coins"
+
+player = Entity(model='cube', collider='box')
+
+coin = Entity(model='sphere', color=color.yellow, position=(2,0,0), collider='box')
+
+def update():
+    if player.intersects(coin).hit:
+        destroy(coin)
+
+app.run()
