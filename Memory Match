@@ -1,0 +1,78 @@
+import pygame, sys, random, time as tm
+pygame.init()
+COLS2,ROWS2=4,4; CARD_W,CARD_H=120,100; PAD=14
+W=COLS2*(CARD_W+PAD)+PAD; H=ROWS2*(CARD_H+PAD)+PAD+60
+screen=pygame.display.set_mode((W,H))
+pygame.display.set_caption("Memory Match")
+clock=pygame.time.Clock()
+font=pygame.font.SysFont("Arial",40,bold=True)
+small=pygame.font.SysFont("Arial",20,bold=True)
+big=pygame.font.SysFont("Arial",36,bold=True)
+
+EMOJIS=["🐶","🐱","🦊","🐸","🐼","🦁","🐯","🐺"]
+SYMBOLS=["★","●","▲","♦","♠","♥","✿","✦"]
+COLORS=[(255,80,100),(100,180,255),(80,220,120),(255,200,60),
+        (200,80,255),(255,140,60),(60,220,200),(180,255,100)]
+
+def make_deck():
+    cards=list(range(8))*2; random.shuffle(cards)
+    return cards
+
+deck=make_deck()
+revealed=[False]*16; matched=[False]*16
+selected=[]; score=0; moves=0; state="idle"; reveal_time=0
+
+while True:
+    now=tm.time()
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: sys.exit()
+        if e.type==pygame.MOUSEBUTTONDOWN:
+            mx,my=e.pos; my-=60
+            if state in("idle","win"):
+                deck=make_deck(); revealed=[False]*16; matched=[False]*16
+                selected=[]; score=0; moves=0; state="playing"; reveal_time=0
+            elif state=="playing" and len(selected)<2 and now-reveal_time>0.5:
+                c=mx//(CARD_W+PAD); r=my//(CARD_H+PAD)
+                if 0<=c<COLS2 and 0<=r<ROWS2:
+                    idx=r*COLS2+c
+                    if not matched[idx] and idx not in selected and not revealed[idx]:
+                        revealed[idx]=True; selected.append(idx)
+                        if len(selected)==2:
+                            moves+=1
+                            if deck[selected[0]]==deck[selected[1]]:
+                                matched[selected[0]]=matched[selected[1]]=True
+                                score+=50; selected=[]; reveal_time=now
+                            else: reveal_time=now
+
+    if state=="playing":
+        if len(selected)==2 and now-reveal_time>0.9:
+            for i in selected: revealed[i]=False
+            selected=[]
+        if all(matched): state="win"
+
+    screen.fill((20,25,50))
+    screen.blit(small.render(f"Score:{score}  Moves:{moves}",True,(180,220,255)),(10,14))
+    for idx in range(16):
+        c=idx%COLS2; r=idx//COLS2
+        x=PAD+c*(CARD_W+PAD); y=60+PAD+r*(CARD_H+PAD)
+        if matched[idx]:
+            pygame.draw.rect(screen,(40,180,80),(x,y,CARD_W,CARD_H),border_radius=10)
+        elif revealed[idx] or idx in selected:
+            pygame.draw.rect(screen,(240,240,255),(x,y,CARD_W,CARD_H),border_radius=10)
+            sym=SYMBOLS[deck[idx]]; col=COLORS[deck[idx]]
+            t=font.render(sym,True,col)
+            screen.blit(t,(x+CARD_W//2-t.get_width()//2,y+CARD_H//2-t.get_height()//2))
+        else:
+            pygame.draw.rect(screen,COLORS[deck[idx]],(x,y,CARD_W,CARD_H),border_radius=10)
+            pygame.draw.rect(screen,(255,255,255,80),(x+4,y+4,CARD_W-8,CARD_H-8),border_radius=8)
+            t=small.render("?",True,(255,255,255))
+            screen.blit(t,(x+CARD_W//2-t.get_width()//2,y+CARD_H//2-t.get_height()//2))
+    if state=="idle":
+        overlay=pygame.Surface((W,H),pygame.SRCALPHA); overlay.fill((0,0,0,160)); screen.blit(overlay,(0,0))
+        t=big.render("MEMORY MATCH",True,(100,220,255)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=small.render("Click to start",True,(180,200,255)); screen.blit(s,(W//2-s.get_width()//2,H//2+20))
+    if state=="win":
+        overlay=pygame.Surface((W,H),pygame.SRCALPHA); overlay.fill((0,0,0,160)); screen.blit(overlay,(0,0))
+        t=big.render("YOU WIN!",True,(80,255,120)); screen.blit(t,(W//2-t.get_width()//2,H//2-30))
+        s=small.render(f"Score:{score}  Moves:{moves} — click restart",True,(180,255,180)); screen.blit(s,(W//2-s.get_width()//2,H//2+20))
+    pygame.display.flip(); clock.tick(60)
