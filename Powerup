@@ -1,0 +1,17 @@
+import pygame
+pygame.init()
+screen=pygame.display.set_mode((800,600))
+pygame.display.set_caption("Task 13: Powerup")
+player=pygame.Rect(100,100,40,40)
+power=pygame.Rect(300,300,30,30)
+speed=5
+running=True
+while running:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+    if player.colliderect(power): speed=10
+    screen.fill((0,0,0))
+    pygame.draw.rect(screen,(0,255,0),player)
+    pygame.draw.rect(screen,(0,0,255),power)
+    pygame.display.flip()
+pygame.quit()
