@@ -1,0 +1,73 @@
+from ursina import *
+
+app = Ursina(title="Platformer")
+window.color = color.rgb(20,20,45)
+camera.orthographic = True
+camera.fov = 7
+camera.position = (0,0,-20)
+HH=camera.fov; HW=HH*window.aspect_ratio
+
+GRAV=-22; JUMP=9; MOVE=5
+
+PLAT_DATA=[
+    (0,-HH+0.4,HW*2,0.5),
+    (-HW+2,-HH+3,2.4,0.3),(-HW+7,-HH+5,2.4,0.3),
+    (-HW+12,-HH+7,2.4,0.3),(2,-HH+8.5,2.2,0.3),
+    (6,-HH+10,2.2,0.3),(HW-2,-HH+11,2.4,0.3),
+]
+COIN_DATA=[
+    (-HW+2,-HH+4),(-HW+7,-HH+6),(-HW+12,-HH+8),
+    (2,-HH+9.5),(6,-HH+11),(HW-2,-HH+12),
+]
+
+player=Entity(model="quad",color=color.rgb(80,160,255),scale=(0.5,0.65,1),position=(-HW+1,-HH+1.5,0))
+platforms=[Entity(model="quad",color=color.rgb(60,140,80),scale=(w,h,1),position=(x,y,0.1))
+           for x,y,w,h in PLAT_DATA]
+coins_ents=[Entity(model="circle",color=color.rgb(255,220,60),scale=0.35,position=(x,y,0))
+            for x,y in COIN_DATA]
+coins_alive=[True]*len(coins_ents)
+
+vy=0; on_ground=False; score_val=0; state="idle"
+score_txt=Text("Score:0",position=(-0.85,0.45),scale=1.5,color=color.rgb(255,220,100))
+title_txt=Text("PLATFORMER\nclick to start\nA/D move   Space jump",position=(-0.3,0.08),scale=1.8,color=color.rgb(80,180,255))
+over_txt=Text("",position=(-0.2,0.05),scale=2,color=color.rgb(255,80,80))
+
+def reset():
+    global vy,on_ground,score_val,state,coins_alive
+    player.position=(-HW+1,-HH+1.5,0); vy=0; on_ground=False; score_val=0
+    for e in coins_ents: e.visible=True
+    coins_alive=[True]*len(coins_ents)
+    score_txt.text="Score:0"; title_txt.visible=False; over_txt.text=""; state="playing"
+
+def input(key):
+    global vy,state
+    if key=="left mouse down" and state in("idle","over"): reset()
+    if state=="playing" and key=="space" and on_ground: vy=JUMP
+
+def update():
+    global vy,on_ground,score_val,state
+    if state!="playing": return
+    if held_keys["a"] or held_keys["left arrow"]: player.x-=MOVE*time.dt
+    if held_keys["d"] or held_keys["right arrow"]: player.x+=MOVE*time.dt
+    player.x=clamp(player.x,-HW+0.3,HW-0.3)
+    vy+=GRAV*time.dt; player.y+=vy*time.dt
+    on_ground=False
+    for plat in platforms:
+        py_top=plat.y+plat.scale_y/2
+        py_bot=plat.y-plat.scale_y/2
+        px_l=plat.x-plat.scale_x/2; px_r=plat.x+plat.scale_x/2
+        if px_l<player.x<px_r:
+            if vy<0 and py_bot<=player.y<=py_top+0.1:
+                player.y=py_top+0.33; vy=0; on_ground=True
+            elif vy>0 and player.y+0.33>=py_top and player.y<py_top:
+                player.y=py_bot-0.33; vy=0
+    if player.y<-HH-1:
+        state="over"; over_txt.text="FELL OFF!\nclick retry"
+    for i,c in enumerate(coins_ents):
+        if coins_alive[i] and abs(player.x-c.x)<0.4 and abs(player.y-c.y)<0.4:
+            coins_alive[i]=False; c.visible=False; score_val+=100
+            score_txt.text=f"Score:{score_val}"
+    if all(not a for a in coins_alive):
+        state="win"; over_txt.text=f"ALL COINS!\nScore:{score_val}\nclick restart"
+
+app.run()
