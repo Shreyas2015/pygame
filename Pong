@@ -1,0 +1,68 @@
+import pygame, sys, random
+pygame.init()
+W,H = 800,500
+screen = pygame.display.set_mode((W,H))
+pygame.display.set_caption("Pong")
+clock = pygame.time.Clock()
+font = pygame.font.SysFont("Arial",32,bold=True)
+small = pygame.font.SysFont("Arial",20)
+
+PW,PH = 12,80
+BALL_R = 10
+PAD_SPD = 6
+
+def reset_ball():
+    vx = random.choice([-1,1])*random.uniform(4,5)
+    vy = random.uniform(-4,4)
+    return [W//2,H//2,vx,vy]
+
+p1y,p2y = H//2-PH//2, H//2-PH//2
+ball = reset_ball()
+s1,s2 = 0,0
+state = "idle"
+
+while True:
+    for e in pygame.event.get():
+        if e.type == pygame.QUIT: sys.exit()
+        if e.type == pygame.KEYDOWN and state in("idle","over"):
+            state="playing"; s1=s2=0; ball=reset_ball(); p1y=p2y=H//2-PH//2
+
+    if state == "playing":
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_w] and p1y>0: p1y-=PAD_SPD
+        if keys[pygame.K_s] and p1y<H-PH: p1y+=PAD_SPD
+        if keys[pygame.K_UP] and p2y>0: p2y-=PAD_SPD
+        if keys[pygame.K_DOWN] and p2y<H-PH: p2y+=PAD_SPD
+
+        ball[0]+=ball[2]; ball[1]+=ball[3]
+        if ball[1]<=BALL_R or ball[1]>=H-BALL_R: ball[3]*=-1
+        # p1 paddle
+        if ball[0]<=30+PW and p1y<=ball[1]<=p1y+PH:
+            ball[2]=abs(ball[2])*1.05; ball[3]+=(ball[1]-(p1y+PH//2))*0.1
+        # p2 paddle
+        if ball[0]>=W-30-PW and p2y<=ball[1]<=p2y+PH:
+            ball[2]=-abs(ball[2])*1.05; ball[3]+=(ball[1]-(p2y+PH//2))*0.1
+        ball[2] = max(-10,min(10,ball[2]))
+        ball[3] = max(-8, min(8, ball[3]))
+        if ball[0]<0: s2+=1; ball=reset_ball()
+        if ball[0]>W: s1+=1; ball=reset_ball()
+        if s1==7 or s2==7: state="over"
+
+    screen.fill((10,10,25))
+    pygame.draw.line(screen,(40,40,80),(W//2,0),(W//2,H),2)
+    for i in range(0,H,30):
+        pygame.draw.rect(screen,(40,40,80),(W//2-2,i,4,20))
+    pygame.draw.rect(screen,(100,180,255),(30,p1y,PW,PH),border_radius=4)
+    pygame.draw.rect(screen,(255,120,100),(W-30-PW,p2y,PW,PH),border_radius=4)
+    pygame.draw.circle(screen,(255,255,255),(int(ball[0]),int(ball[1])),BALL_R)
+    screen.blit(font.render(str(s1),True,(100,180,255)),(W//2-60,20))
+    screen.blit(font.render(str(s2),True,(255,120,100)),(W//2+40,20))
+    if state=="idle":
+        t=font.render("PONG — press any key",True,(200,200,255))
+        screen.blit(t,(W//2-t.get_width()//2,H//2-16))
+        screen.blit(small.render("W/S  vs  ↑/↓",True,(150,150,200)),(W//2-60,H//2+20))
+    if state=="over":
+        winner = "Player 1" if s1==7 else "Player 2"
+        t=font.render(f"{winner} wins! Press key",True,(255,220,100))
+        screen.blit(t,(W//2-t.get_width()//2,H//2-16))
+    pygame.display.flip(); clock.tick(60)
