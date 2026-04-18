@@ -1,0 +1,11 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 35: Maze"
+
+for x in range(5):
+    Entity(model='cube', position=(x,0,0), collider='box')
+
+player = Entity(model='cube', z=5)
+
+app.run()
