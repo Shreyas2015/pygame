@@ -1,0 +1,66 @@
+import pygame, sys, random
+pygame.init()
+W,H=480,640
+screen=pygame.display.set_mode((W,H))
+pygame.display.set_caption("Flappy Bird")
+clock=pygame.time.Clock()
+font=pygame.font.SysFont("Arial",28,bold=True)
+big=pygame.font.SysFont("Arial",44,bold=True)
+
+GAP=160; PIPE_W=60; PIPE_SPD=3; GRAV=0.5; FLAP=-9
+
+def reset():
+    return H//2,0,[],0,"idle"
+
+by,bvy,pipes,score,state=reset()
+ptimer=0
+
+while True:
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: sys.exit()
+        if e.type in(pygame.KEYDOWN,pygame.MOUSEBUTTONDOWN):
+            if state=="idle": state="playing"
+            elif state=="playing": bvy=FLAP
+            elif state=="over":
+                by,bvy,pipes,score,state=reset(); ptimer=0; state="playing"
+
+    if state=="playing":
+        bvy+=GRAV; by+=bvy
+        ptimer+=1
+        if ptimer>=80:
+            ptimer=0
+            gap_y=random.randint(150,H-150-GAP)
+            pipes.append([W,gap_y,False])
+        for p in pipes[:]:
+            p[0]-=PIPE_SPD
+            if p[0]<-PIPE_W: pipes.remove(p)
+            if not p[2] and p[0]<80: p[2]=True; score+=1
+        if by<0 or by>H-20: state="over"
+        for p in pipes:
+            if 60<=p[0]+PIPE_W<=120 or 60<=p[0]<=120:
+                if by<p[1] or by>p[1]+GAP: state="over"
+
+    screen.fill((80,180,255))
+    for i in range(0,W,60):
+        pygame.draw.rect(screen,(70,170,245),(i,H-80,60,80))
+    # ground
+    pygame.draw.rect(screen,(100,200,60),(0,H-30,W,30))
+    for p in pipes:
+        pygame.draw.rect(screen,(60,190,60),(p[0],0,PIPE_W,p[1]),border_radius=0)
+        pygame.draw.rect(screen,(40,160,40),(p[0]-4,p[1]-22,PIPE_W+8,22))
+        pygame.draw.rect(screen,(60,190,60),(p[0],p[1]+GAP,PIPE_W,H),border_radius=0)
+        pygame.draw.rect(screen,(40,160,40),(p[0]-4,p[1]+GAP,PIPE_W+8,22))
+    # bird
+    pygame.draw.circle(screen,(255,220,60),(80,int(by)),18)
+    pygame.draw.circle(screen,(255,180,40),(80,int(by)),18,2)
+    pygame.draw.circle(screen,(0,0,0),(88,int(by)-4),4)
+    pygame.draw.polygon(screen,(255,120,0),[(98,int(by)),(80,int(by)-6),(80,int(by)+2)])
+    screen.blit(font.render(str(score),True,(255,255,255)),(W//2-14,20))
+    if state=="idle":
+        t=big.render("FLAPPY BIRD",True,(255,240,80)); screen.blit(t,(W//2-t.get_width()//2,200))
+        s=font.render("tap / click to flap",True,(255,255,255)); screen.blit(s,(W//2-s.get_width()//2,260))
+    if state=="over":
+        overlay=pygame.Surface((W,H),pygame.SRCALPHA); overlay.fill((0,0,0,120)); screen.blit(overlay,(0,0))
+        t=big.render("GAME OVER",True,(255,80,80)); screen.blit(t,(W//2-t.get_width()//2,H//2-40))
+        s=font.render(f"Score: {score}  — tap to retry",True,(255,220,200)); screen.blit(s,(W//2-s.get_width()//2,H//2+20))
+    pygame.display.flip(); clock.tick(60)
