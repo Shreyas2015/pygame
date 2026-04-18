@@ -1,0 +1,72 @@
+from ursina import *
+import random
+
+app = Ursina(title="Whack-a-Mole")
+window.color = color.rgb(80,160,60)
+camera.orthographic = True
+camera.fov = 7
+camera.position = (0,0,-20)
+
+HOLE_POS=[(-4,1),(0,1),(4,1),(-4,-1),(0,-1),(4,-1),(-2,-3),(2,-3)]
+
+holes=[Entity(model="circle",color=color.rgb(30,20,10),scale=(1.6,0.7,1),position=(*p,0.1))
+       for p in HOLE_POS]
+mole_ents=[Entity(model="circle",color=color.rgb(180,120,60),scale=1.0,position=(*p,-0.5),visible=False)
+           for p in HOLE_POS]
+mole_state=[{"up":False,"t":0,"dur":1.2,"whacked":False} for _ in HOLE_POS]
+
+for e in mole_ents: e.collider="circle"
+for h in holes:    h.collider="circle"
+
+score_val=0; misses=0; MAX_MISS=5; state="idle"; spawn_t=0
+score_txt=Text("Score:0",position=(-0.85,0.45),scale=1.5,color=color.rgb(255,240,200))
+miss_txt =Text("Misses:_____",position=(-0.85,0.38),scale=1.4,color=color.rgb(255,120,120))
+title_txt=Text("WHACK-A-MOLE\nclick to start\nclick moles before they hide!",position=(-0.36,0.1),scale=1.8,color=color.rgb(255,240,100))
+over_txt =Text("",position=(-0.22,0.05),scale=2,color=color.rgb(255,220,60))
+
+def spawn_mole():
+    idle=[i for i,m in enumerate(mole_state) if not m["up"]]
+    if idle:
+        i=random.choice(idle)
+        mole_state[i].update({"up":True,"t":0,"dur":random.uniform(0.9,1.8),"whacked":False})
+        mole_ents[i].visible=True; mole_ents[i].color=color.rgb(180,120,60)
+        mole_ents[i].position=Vec3(*HOLE_POS[i],0)
+
+def reset():
+    global score_val,misses,state,spawn_t
+    for i in range(len(HOLE_POS)):
+        mole_state[i].update({"up":False,"t":0,"whacked":False})
+        mole_ents[i].visible=False
+    score_val=0; misses=0; state="playing"; spawn_t=0
+    score_txt.text="Score:0"; miss_txt.text="Misses:_____"
+    title_txt.visible=False; over_txt.text=""
+
+def input(key):
+    global score_val,state
+    if key=="left mouse down":
+        if state in("idle","over"): reset(); return
+        hit=mouse.hovered_entity
+        if hit in mole_ents:
+            i=mole_ents.index(hit)
+            if mole_state[i]["up"] and not mole_state[i]["whacked"]:
+                mole_state[i]["whacked"]=True
+                mole_ents[i].color=color.rgb(255,100,100)
+                score_val+=10; score_txt.text=f"Score:{score_val}"
+
+def update():
+    global misses,state,spawn_t
+    if state!="playing": return
+    spawn_t+=time.dt
+    if spawn_t>=0.9: spawn_t=0; spawn_mole()
+    for i,m in enumerate(mole_state):
+        if m["up"]:
+            m["t"]+=time.dt
+            if m["whacked"] and m["t"]>0.35:
+                m["up"]=False; mole_ents[i].visible=False
+            elif not m["whacked"] and m["t"]>m["dur"]:
+                m["up"]=False; mole_ents[i].visible=False
+                misses+=1; miss_txt.text=f"Misses:{'X'*misses}{'_'*(MAX_MISS-misses)}"
+                if misses>=MAX_MISS:
+                    state="over"; over_txt.text=f"TIME'S UP!\nScore:{score_val}\nclick retry"
+
+app.run()
