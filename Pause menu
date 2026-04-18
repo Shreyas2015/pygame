@@ -1,0 +1,12 @@
+from ursina import *
+
+app = Ursina()
+window.title = "Task 47: Pause Menu"
+
+menu = Text("PAUSED", enabled=False)
+
+def input(key):
+    if key == 'p':
+        menu.enabled = not menu.enabled
+
+app.run()
