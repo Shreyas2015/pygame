@@ -1,0 +1,14 @@
+
+from ursina import *
+
+app = Ursina()
+window.title = "Task 33: Enemy Follow"
+
+player = Entity(model='cube')
+enemy = Entity(model='cube', color=color.red, x=5)
+
+def update():
+    if distance(enemy, player) > 2:
+        enemy.position += (player.position - enemy.position) * 0.01
+
+app.run()
