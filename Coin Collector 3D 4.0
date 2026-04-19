@@ -1,0 +1,126 @@
+from ursina import *
+import random
+
+app = Ursina()
+
+window.title = 'Coin Collector 3D'
+window.color = color.rgb(45, 46, 50)
+camera.z = -30
+camera.y = 15
+camera.rotation_x = 30
+
+arena_size = 20
+score = 0
+coin_count = 10
+
+score_text = Text(text=f'Score: {score}', position=(-0.85,0.45), scale=2, origin=(0,0), background=True)
+
+player = Entity(
+    model='sphere',
+    color=color.orange,
+    scale=(1.5,1.5,1.5),
+    collider='sphere',
+    position=(0, 1, 0),
+    speed=7,
+)
+
+arena = Entity(
+    model='plane',
+    texture='white_cube',
+    texture_scale=(arena_size,arena_size),
+    scale=(arena_size,1,arena_size),
+    collider='box',
+    color=color.gray
+)
+
+walls = []
+# Left Wall
+walls.append(Entity(model='cube', scale=(1,4,arena_size+2), position=(-arena_size/2,2,0), collider='box', color=color.dark_gray))
+# Right Wall
+walls.append(Entity(model='cube', scale=(1,4,arena_size+2), position=(arena_size/2,2,0), collider='box', color=color.dark_gray))
+# Top Wall
+walls.append(Entity(model='cube', scale=(arena_size+2,4,1), position=(0,2,arena_size/2), collider='box', color=color.dark_gray))
+# Bottom Wall
+walls.append(Entity(model='cube', scale=(arena_size+2,4,1), position=(0,2,-arena_size/2), collider='box', color=color.dark_gray))
+
+coins = []
+
+def spawn_coin():
+    while True:
+        x = random.uniform(-arena_size/2+1, arena_size/2-1)
+        z = random.uniform(-arena_size/2+1, arena_size/2-1)
+        # Ensure not spawning too close to player
+        if distance_2d(player.position.x, player.position.z, x, z) > 3:
+            break
+    coin = Entity(
+        model='sphere',
+        color=color.yellow,
+        scale=(0.7,0.7,0.7),
+        position=(x, 1, z),
+        collider='sphere',
+        spin=random.choice([-120,120])
+    )
+    coins.append(coin)
+
+def distance_2d(x1, y1, x2, y2):
+    return ((x1-x2)**2 + (y1-y2)**2) ** 0.5
+
+def update():
+    global score
+    move = Vec3(
+        held_keys['d'] - held_keys['a'],
+        0,
+        held_keys['w'] - held_keys['s']
+    ).normalized() * time.dt * player.speed
+    player.position += move
+
+    # Clamp within arena
+    player.x = clamp(player.x, -arena_size/2+1, arena_size/2-1)
+    player.z = clamp(player.z, -arena_size/2+1, arena_size/2-1)
+
+    # Coin spinning effect
+    for coin in coins:
+        coin.rotation_y += coin.spin * time.dt
+
+    # Collision check
+    for coin in coins[:]:
+        if distance_2d(player.x, player.z, coin.x, coin.z) < 1.1:
+            coins.remove(coin)
+            destroy(coin)
+            score += 1
+            score_text.text = f'Score: {score}'
+
+    # Win condition
+    if len(coins) == 0:
+        win_text.enabled = True
+
+def restart():
+    global score
+    score = 0
+    score_text.text = f'Score: {score}'
+    win_text.enabled = False
+    player.position = (0, 1, 0)
+    for coin in coins:
+        destroy(coin)
+    coins.clear()
+    for i in range(coin_count):
+        spawn_coin()
+
+def input(key):
+    if key == 'r' and win_text.enabled:
+        restart()
+
+for i in range(coin_count):
+    spawn_coin()
+
+win_text = Text(
+    text='YOU WIN! Press R to Restart',
+    scale=2,
+    origin=(0,0),
+    background=True,
+    color=color.green,
+    position=(0,0),
+    enabled=False
+)
+
+app.run()
