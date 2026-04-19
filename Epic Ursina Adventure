@@ -1,0 +1,255 @@
+from ursina import *
+from ursina.prefabs.first_person_controller import FirstPersonController
+import random
+
+app = Ursina()
+
+# ------------------ CONFIG ------------------
+WINDOW_TITLE = "Epic Ursina Adventure"
+window.title = WINDOW_TITLE
+window.borderless = False
+window.exit_button.visible = False
+
+# ------------------ PLAYER ------------------
+player = FirstPersonController()
+player.gravity = 0.5
+player.speed = 5
+player.cursor.visible = True
+
+# ------------------ SKY ------------------
+sky = Sky()
+
+# ------------------ LIGHT ------------------
+DirectionalLight().look_at(Vec3(1,-1,-1))
+AmbientLight(color=color.rgba(100,100,100,0.5))
+
+# ------------------ TERRAIN ------------------
+floor = Entity(
+    model='plane',
+    scale=(100,1,100),
+    texture='grass',
+    texture_scale=(50,50),
+    collider='box'
+)
+
+# ------------------ WALLS ------------------
+walls = []
+for i in range(20):
+    wall = Entity(
+        model='cube',
+        scale=(2, random.randint(2,5), 2),
+        position=(random.randint(-40,40),1,random.randint(-40,40)),
+        color=color.gray,
+        collider='box'
+    )
+    walls.append(wall)
+
+# ------------------ ENEMIES ------------------
+enemies = []
+
+class Enemy(Entity):
+    def __init__(self, **kwargs):
+        super().__init__(
+            model='cube',
+            color=color.red,
+            scale=(1,2,1),
+            collider='box',
+            **kwargs
+        )
+        self.speed = random.uniform(1,3)
+        self.health = 100
+
+    def update(self):
+        if distance(self.position, player.position) < 20:
+            self.look_at(player)
+            self.position += self.forward * time.dt * self.speed
+
+        if self.health <= 0:
+            destroy(self)
+            enemies.remove(self)
+
+# spawn enemies
+for i in range(10):
+    enemy = Enemy(position=(random.randint(-30,30),1,random.randint(-30,30)))
+    enemies.append(enemy)
+
+# ------------------ BULLETS ------------------
+bullets = []
+
+class Bullet(Entity):
+    def __init__(self, position, direction):
+        super().__init__(
+            model='sphere',
+            scale=0.2,
+            color=color.yellow,
+            position=position
+        )
+        self.direction = direction
+        self.speed = 20
+        bullets.append(self)
+
+    def update(self):
+        self.position += self.direction * self.speed * time.dt
+
+        for enemy in enemies:
+            if self.intersects(enemy).hit:
+                enemy.health -= 50
+                destroy(self)
+                bullets.remove(self)
+                break
+
+        if distance(self.position, player.position) > 50:
+            destroy(self)
+            if self in bullets:
+                bullets.remove(self)
+
+# ------------------ SHOOTING ------------------
+
+def input(key):
+    if key == 'left mouse down':
+        Bullet(position=player.position + Vec3(0,1,0), direction=camera.forward)
+
+# ------------------ COINS ------------------
+coins = []
+score = 0
+
+class Coin(Entity):
+    def __init__(self, **kwargs):
+        super().__init__(
+            model='sphere',
+            color=color.gold,
+            scale=0.5,
+            collider='box',
+            **kwargs
+        )
+        coins.append(self)
+
+    def update(self):
+        self.rotation_y += 100 * time.dt
+
+        global score
+        if self.intersects(player).hit:
+            score += 1
+            destroy(self)
+            coins.remove(self)
+
+# spawn coins
+for i in range(20):
+    Coin(position=(random.randint(-40,40),1,random.randint(-40,40)))
+
+# ------------------ UI ------------------
+score_text = Text(text='Score: 0', position=(-0.85,0.45), scale=2)
+health_text = Text(text='Health: 100', position=(-0.85,0.40), scale=2)
+
+# ------------------ PLAYER HEALTH ------------------
+player_health = 100
+
+# ------------------ GAME UPDATE ------------------
+def update():
+    global player_health
+
+    score_text.text = f'Score: {score}'
+    health_text.text = f'Health: {player_health}'
+
+    for enemy in enemies:
+        if distance(enemy.position, player.position) < 2:
+            player_health -= 10 * time.dt
+
+    if player_health <= 0:
+        player.disable()
+        Text("GAME OVER", scale=3, origin=(0,0), color=color.red)
+
+# ------------------ TREES ------------------
+trees = []
+for i in range(30):
+    trunk = Entity(
+        model='cube',
+        scale=(0.5,2,0.5),
+        color=color.brown,
+        position=(random.randint(-45,45),1,random.randint(-45,45))
+    )
+    leaves = Entity(
+        model='sphere',
+        scale=2,
+        color=color.green,
+        position=trunk.position + Vec3(0,2,0)
+    )
+    trees.append((trunk, leaves))
+
+# ------------------ DAY/NIGHT ------------------
+time_of_day = 0
+
+def update_day_night():
+    global time_of_day
+    time_of_day += time.dt * 2
+    light_intensity = abs(sin(time_of_day))
+    scene.color = color.rgb(
+        50 + light_intensity*100,
+        50 + light_intensity*100,
+        80 + light_intensity*100
+    )
+
+# integrate day/night into update
+old_update = update
+
+def update():
+    old_update()
+    update_day_night()
+
+# ------------------ JUMP BOOST ------------------
+boosts = []
+
+class JumpBoost(Entity):
+    def __init__(self, **kwargs):
+        super().__init__(
+            model='cube',
+            color=color.azure,
+            scale=0.5,
+            collider='box',
+            **kwargs
+        )
+        boosts.append(self)
+
+    def update(self):
+        if self.intersects(player).hit:
+            player.jump_height = 4
+            invoke(reset_jump, delay=5)
+            destroy(self)
+            boosts.remove(self)
+
+
+def reset_jump():
+    player.jump_height = 2
+
+# spawn boosts
+for i in range(5):
+    JumpBoost(position=(random.randint(-40,40),1,random.randint(-40,40)))
+
+# ------------------ MINI MAP ------------------
+mini_map = Entity(
+    parent=camera.ui,
+    model='quad',
+    color=color.rgba(0,0,0,150),
+    scale=(0.3,0.3),
+    position=(0.7,-0.35)
+)
+
+player_dot = Entity(parent=mini_map, model='circle', color=color.green, scale=0.02)
+
+
+def update_minimap():
+    player_dot.x = player.x / 100
+    player_dot.y = player.z / 100
+
+# integrate minimap
+old_update2 = update
+
+def update():
+    old_update2()
+    update_minimap()
+
+# ------------------ MUSIC ------------------
+music = Audio('shore', loop=True, autoplay=True)
+
+# ------------------ START ------------------
+app.run()
