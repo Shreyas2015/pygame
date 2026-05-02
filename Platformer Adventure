@@ -1,0 +1,167 @@
+import pygame
+import random
+import sys
+
+pygame.init()
+pygame.mixer.init()
+
+WIDTH, HEIGHT = 800, 500
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Platformer Adventure")
+
+clock = pygame.time.Clock()
+font = pygame.font.SysFont("Arial", 30)
+
+# --- Sounds (fallback if not found) ---
+def load_sound(name):
+    try:
+        return pygame.mixer.Sound(name)
+    except:
+        return None
+
+jump_sound = load_sound("jump.wav")
+coin_sound = load_sound("coin.wav")
+
+# --- Player ---
+player = pygame.Rect(100, 300, 40, 40)
+vel_y = 0
+gravity = 0.5
+on_ground = False
+
+# --- Game State ---
+level = 1
+score = 0
+lives = 3
+game_state = "menu"
+
+# --- Platforms ---
+def generate_platforms(level):
+    platforms = [pygame.Rect(0, 450, WIDTH, 50)]
+    for _ in range(5 + level):
+        x = random.randint(0, WIDTH - 100)
+        y = random.randint(100, 400)
+        platforms.append(pygame.Rect(x, y, 100, 15))
+    return platforms
+
+platforms = generate_platforms(level)
+
+# --- Coins ---
+def generate_coins(level):
+    coins = []
+    for _ in range(5 + level):
+        x = random.randint(50, WIDTH - 50)
+        y = random.randint(50, 350)
+        coins.append(pygame.Rect(x, y, 20, 20))
+    return coins
+
+coins = generate_coins(level)
+
+# --- Reset ---
+def reset_level():
+    global platforms, coins, player, vel_y
+    player.x, player.y = 100, 300
+    vel_y = 0
+    platforms = generate_platforms(level)
+    coins[:] = generate_coins(level)
+
+# --- Draw Text ---
+def draw_text(text, x, y, color=(255,255,255)):
+    img = font.render(text, True, color)
+    screen.blit(img, (x, y))
+
+# --- Main Loop ---
+running = True
+while running:
+    screen.fill((30, 30, 50))
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        if game_state == "menu":
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    game_state = "play"
+
+        elif game_state == "gameover":
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    level = 1
+                    score = 0
+                    lives = 3
+                    reset_level()
+                    game_state = "menu"
+
+    # --- MENU ---
+    if game_state == "menu":
+        draw_text("PLATFORMER GAME", 250, 150)
+        draw_text("Press SPACE to Start", 260, 220)
+
+    # --- GAME ---
+    elif game_state == "play":
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_LEFT]:
+            player.x -= 5
+        if keys[pygame.K_RIGHT]:
+            player.x += 5
+        if keys[pygame.K_UP] and on_ground:
+            vel_y = -10
+            if jump_sound:
+                jump_sound.play()
+
+        vel_y += gravity
+        player.y += vel_y
+        on_ground = False
+
+        # Platform collision
+        for plat in platforms:
+            if player.colliderect(plat) and vel_y > 0:
+                player.bottom = plat.top
+                vel_y = 0
+                on_ground = True
+
+        # Coin collection
+        for coin in coins[:]:
+            if player.colliderect(coin):
+                coins.remove(coin)
+                score += 10
+                if coin_sound:
+                    coin_sound.play()
+
+        # Next level
+        if not coins:
+            level += 1
+            reset_level()
+
+        # Fall
+        if player.y > HEIGHT:
+            lives -= 1
+            if lives <= 0:
+                game_state = "gameover"
+            else:
+                reset_level()
+
+        # Draw
+        pygame.draw.rect(screen, (0, 200, 255), player)
+
+        for plat in platforms:
+            pygame.draw.rect(screen, (100, 255, 100), plat)
+
+        for coin in coins:
+            pygame.draw.circle(screen, (255, 215, 0), coin.center, 10)
+
+        draw_text(f"Score: {score}", 10, 10)
+        draw_text(f"Level: {level}", 10, 40)
+        draw_text(f"Lives: {lives}", 10, 70)
+
+    # --- GAME OVER ---
+    elif game_state == "gameover":
+        draw_text("GAME OVER", 320, 180)
+        draw_text("Press R to Restart", 280, 240)
+
+    pygame.display.update()
+    clock.tick(60)
+
+pygame.quit()
+sys.exit()
