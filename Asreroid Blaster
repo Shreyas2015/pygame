@@ -1,0 +1,536 @@
+import pygame
+import random
+import math
+import sys
+import time
+
+pygame.init()
+
+W, H = 900, 650
+screen = pygame.display.set_mode((W, H))
+pygame.display.set_caption("Asteroid Blaster")
+clock = pygame.time.Clock()
+
+# Colors
+BG       = (5, 5, 20)
+WHITE    = (255, 255, 255)
+GRAY     = (120, 120, 140)
+BLUE     = (80, 160, 255)
+CYAN     = (60, 220, 220)
+RED      = (220, 60, 60)
+ORANGE   = (230, 140, 40)
+YELLOW   = (240, 210, 50)
+GREEN    = (60, 210, 100)
+PURPLE   = (160, 80, 220)
+HUD_BG   = (10, 10, 35)
+
+FONT_BIG   = pygame.font.SysFont("Arial", 40, bold=True)
+FONT_MED   = pygame.font.SysFont("Arial", 22, bold=True)
+FONT_SM    = pygame.font.SysFont("Arial", 15)
+FONT_TITLE = pygame.font.SysFont("Arial", 64, bold=True)
+
+# Stars
+STARS = [(random.randint(0, W), random.randint(0, H), random.uniform(0.3, 1.5)) for _ in range(180)]
+
+
+# ── Ship ──────────────────────────────────────────────────────────────────────
+class Ship:
+    def __init__(self):
+        self.x = W / 2
+        self.y = H / 2
+        self.angle = 0.0
+        self.vx = 0.0
+        self.vy = 0.0
+        self.radius = 16
+        self.invincible = 0.0
+        self.shield = 0
+        self.shoot_cooldown = 0.0
+        self.thrust_particles = []
+
+    def update(self, dt, keys):
+        if keys[pygame.K_LEFT]  or keys[pygame.K_a]: self.angle -= 200 * dt
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]: self.angle += 200 * dt
+
+        thrusting = keys[pygame.K_UP] or keys[pygame.K_w]
+        if thrusting:
+            rad = math.radians(self.angle)
+            self.vx += math.sin(rad) * 320 * dt
+            self.vy -= math.cos(rad) * 320 * dt
+            # Thrust particles
+            if random.random() < 0.6:
+                rad2 = math.radians(self.angle + 180 + random.uniform(-20, 20))
+                spd  = random.uniform(2, 5)
+                self.thrust_particles.append({
+                    'x': self.x - math.sin(math.radians(self.angle)) * 18,
+                    'y': self.y + math.cos(math.radians(self.angle)) * 18,
+                    'vx': math.sin(rad2) * spd,
+                    'vy': -math.cos(rad2) * spd,
+                    'alpha': 220,
+                    'color': random.choice([ORANGE, YELLOW, RED]),
+                })
+
+        # Drag
+        self.vx *= 0.98
+        self.vy *= 0.98
+
+        speed = math.hypot(self.vx, self.vy)
+        max_spd = 400
+        if speed > max_spd:
+            self.vx = self.vx / speed * max_spd
+            self.vy = self.vy / speed * max_spd
+
+        self.x = (self.x + self.vx * dt) % W
+        self.y = (self.y + self.vy * dt) % H
+
+        self.invincible  = max(0, self.invincible - dt)
+        self.shoot_cooldown = max(0, self.shoot_cooldown - dt)
+
+        for p in self.thrust_particles:
+            p['x'] += p['vx']
+            p['y'] += p['vy']
+            p['alpha'] -= 18
+        self.thrust_particles = [p for p in self.thrust_particles if p['alpha'] > 0]
+
+    def draw(self, surf):
+        # Thrust particles
+        for p in self.thrust_particles:
+            s = pygame.Surface((10, 10), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*p['color'], int(p['alpha'])), (5, 5), 4)
+            surf.blit(s, (int(p['x']) - 5, int(p['y']) - 5))
+
+        if self.invincible > 0 and int(self.invincible * 8) % 2 == 0:
+            return  # Blink
+
+        rad = math.radians(self.angle)
+        def rot(px, py):
+            rx = px * math.cos(rad) - py * math.sin(rad)
+            ry = px * math.sin(rad) + py * math.cos(rad)
+            return (int(self.x + rx), int(self.y + ry))
+
+        pts = [rot(0, -20), rot(-12, 14), rot(0, 8), rot(12, 14)]
+        pygame.draw.polygon(surf, CYAN, pts, 0)
+        pygame.draw.polygon(surf, WHITE, pts, 2)
+
+        if self.shield > 0:
+            s = pygame.Surface((80, 80), pygame.SRCALPHA)
+            pygame.draw.circle(s, (80, 180, 255, 60), (40, 40), 36)
+            pygame.draw.circle(s, (80, 180, 255, 180), (40, 40), 36, 2)
+            surf.blit(s, (int(self.x) - 40, int(self.y) - 40))
+
+    def shoot(self):
+        if self.shoot_cooldown <= 0:
+            self.shoot_cooldown = 0.18
+            rad = math.radians(self.angle)
+            return Bullet(self.x, self.y, rad)
+        return None
+
+
+# ── Bullet ────────────────────────────────────────────────────────────────────
+class Bullet:
+    SPEED = 600
+    def __init__(self, x, y, angle):
+        self.x = x
+        self.y = y
+        self.vx =  math.sin(angle) * self.SPEED
+        self.vy = -math.cos(angle) * self.SPEED
+        self.life = 1.2
+        self.trail = []
+
+    def update(self, dt):
+        self.trail.append((self.x, self.y))
+        if len(self.trail) > 6: self.trail.pop(0)
+        self.x = (self.x + self.vx * dt) % W
+        self.y = (self.y + self.vy * dt) % H
+        self.life -= dt
+
+    def dead(self): return self.life <= 0
+
+    def draw(self, surf):
+        for i, (tx, ty) in enumerate(self.trail):
+            alpha = int(60 * (i + 1) / len(self.trail))
+            s = pygame.Surface((8, 8), pygame.SRCALPHA)
+            pygame.draw.circle(s, (255, 255, 120, alpha), (4, 4), 3)
+            surf.blit(s, (int(tx) - 4, int(ty) - 4))
+        pygame.draw.circle(surf, YELLOW, (int(self.x), int(self.y)), 4)
+        pygame.draw.circle(surf, WHITE,  (int(self.x), int(self.y)), 2)
+
+
+# ── Asteroid ──────────────────────────────────────────────────────────────────
+class Asteroid:
+    COLORS = [GRAY, (150, 130, 110), (130, 140, 130), (110, 110, 130)]
+
+    def __init__(self, size=3, x=None, y=None):
+        self.size = size
+        self.radius = size * 18
+        if x is None:
+            side = random.randint(0, 3)
+            if side == 0: self.x, self.y = random.uniform(0, W), -self.radius
+            elif side == 1: self.x, self.y = W + self.radius, random.uniform(0, H)
+            elif side == 2: self.x, self.y = random.uniform(0, W), H + self.radius
+            else: self.x, self.y = -self.radius, random.uniform(0, H)
+        else:
+            self.x, self.y = x, y
+        spd = random.uniform(40, 100) / size
+        ang = random.uniform(0, math.pi * 2)
+        self.vx = math.cos(ang) * spd
+        self.vy = math.sin(ang) * spd
+        self.rot = 0.0
+        self.rot_spd = random.uniform(-60, 60)
+        self.color = random.choice(self.COLORS)
+        n = random.randint(8, 13)
+        self.shape = []
+        for i in range(n):
+            a = (i / n) * math.pi * 2
+            r = self.radius * random.uniform(0.75, 1.15)
+            self.shape.append((math.cos(a) * r, math.sin(a) * r))
+
+    def update(self, dt):
+        self.x = (self.x + self.vx * dt) % W
+        self.y = (self.y + self.vy * dt) % H
+        self.rot += self.rot_spd * dt
+
+    def draw(self, surf):
+        rad = math.radians(self.rot)
+        pts = []
+        for sx, sy in self.shape:
+            rx = sx * math.cos(rad) - sy * math.sin(rad) + self.x
+            ry = sx * math.sin(rad) + sy * math.cos(rad) + self.y
+            pts.append((int(rx), int(ry)))
+        pygame.draw.polygon(surf, self.color, pts)
+        pygame.draw.polygon(surf, WHITE, pts, 2)
+
+    def split(self):
+        if self.size <= 1:
+            return []
+        return [Asteroid(self.size - 1, self.x + random.uniform(-10, 10),
+                         self.y + random.uniform(-10, 10)) for _ in range(2)]
+
+    def score_value(self):
+        return {3: 20, 2: 50, 1: 100}.get(self.size, 10)
+
+
+# ── Powerup ───────────────────────────────────────────────────────────────────
+class Powerup:
+    TYPES = ['shield', 'rapid', 'multi']
+    COLORS = {'shield': BLUE, 'rapid': GREEN, 'multi': PURPLE}
+    LABELS = {'shield': 'S', 'rapid': 'R', 'multi': 'M'}
+
+    def __init__(self):
+        self.type = random.choice(self.TYPES)
+        self.x = random.uniform(60, W - 60)
+        self.y = random.uniform(100, H - 60)
+        self.radius = 14
+        self.life = 8.0
+        self.pulse = 0.0
+
+    def update(self, dt):
+        self.life -= dt
+        self.pulse += dt * 4
+
+    def dead(self): return self.life <= 0
+
+    def draw(self, surf):
+        glow = abs(math.sin(self.pulse)) * 0.5 + 0.5
+        col = self.COLORS[self.type]
+        s = pygame.Surface((60, 60), pygame.SRCALPHA)
+        pygame.draw.circle(s, (*col, int(50 * glow)), (30, 30), 26)
+        pygame.draw.circle(s, (*col, 200), (30, 30), 14)
+        surf.blit(s, (int(self.x) - 30, int(self.y) - 30))
+        lbl = FONT_MED.render(self.LABELS[self.type], True, WHITE)
+        surf.blit(lbl, (int(self.x) - lbl.get_width() // 2, int(self.y) - lbl.get_height() // 2))
+
+
+# ── Particle ──────────────────────────────────────────────────────────────────
+class Particle:
+    def __init__(self, x, y, color):
+        self.x, self.y = float(x), float(y)
+        ang = random.uniform(0, math.pi * 2)
+        spd = random.uniform(1.5, 7)
+        self.vx = math.cos(ang) * spd
+        self.vy = math.sin(ang) * spd
+        self.r = random.uniform(2, 5)
+        self.alpha = 255
+        self.color = color
+
+    def update(self):
+        self.x += self.vx; self.y += self.vy
+        self.vy += 0.08
+        self.alpha -= 8
+
+    def dead(self): return self.alpha <= 0
+
+    def draw(self, surf):
+        s = pygame.Surface((12, 12), pygame.SRCALPHA)
+        pygame.draw.circle(s, (*self.color, int(self.alpha)), (6, 6), int(self.r))
+        surf.blit(s, (int(self.x) - 6, int(self.y) - 6))
+
+
+# ── Float text ────────────────────────────────────────────────────────────────
+class FloatText:
+    def __init__(self, x, y, text, color=WHITE):
+        self.x, self.y = float(x), float(y)
+        self.text = text; self.color = color
+        self.alpha = 255; self.vy = -1.2
+
+    def update(self): self.y += self.vy; self.alpha -= 6
+    def dead(self): return self.alpha <= 0
+
+    def draw(self, surf):
+        img = FONT_MED.render(self.text, True, self.color)
+        img.set_alpha(int(self.alpha))
+        surf.blit(img, (int(self.x) - img.get_width() // 2, int(self.y)))
+
+
+# ── HUD ───────────────────────────────────────────────────────────────────────
+def draw_hud(score, lives, level, wave, rapid_time, multi_time, shield):
+    pygame.draw.rect(screen, HUD_BG, (0, 0, W, 56))
+    pygame.draw.line(screen, (40, 40, 70), (0, 56), (W, 56), 1)
+
+    sc = FONT_BIG.render(str(score), True, YELLOW)
+    screen.blit(sc, (W // 2 - sc.get_width() // 2, 8))
+
+    lv = FONT_MED.render(f"Wave {wave}", True, CYAN)
+    screen.blit(lv, (20, 16))
+
+    for i in range(lives):
+        rad = math.radians(0)
+        cx, cy = 780 + i * 32, 28
+        pts = [(cx, cy - 12), (cx - 7, cy + 8), (cx, cy + 3), (cx + 7, cy + 8)]
+        pygame.draw.polygon(screen, CYAN, pts)
+
+    if rapid_time > 0:
+        rt = FONT_SM.render(f"RAPID {rapid_time:.1f}s", True, GREEN)
+        screen.blit(rt, (20, 38))
+    if multi_time > 0:
+        mt = FONT_SM.render(f"MULTI {multi_time:.1f}s", True, PURPLE)
+        screen.blit(mt, (120, 38))
+    if shield > 0:
+        st = FONT_SM.render(f"SHIELD {shield}", True, BLUE)
+        screen.blit(st, (220, 38))
+
+
+def draw_stars():
+    for sx, sy, br in STARS:
+        c = int(br * 140)
+        pygame.draw.circle(screen, (c, c, c + 30), (int(sx), int(sy)), 1 if br < 1 else 2)
+
+
+def draw_menu(best):
+    screen.fill(BG); draw_stars()
+    t = FONT_TITLE.render("ASTEROID BLASTER", True, CYAN)
+    screen.blit(t, (W // 2 - t.get_width() // 2, 80))
+    lines = [
+        ("Arrow Keys / WASD", "Move & Rotate"),
+        ("SPACE", "Shoot"),
+        ("P", "Pause"),
+        ("Collect powerups:", "S=Shield  R=Rapid Fire  M=Multi-shot"),
+    ]
+    for i, (k, v) in enumerate(lines):
+        kt = FONT_MED.render(k, True, YELLOW)
+        vt = FONT_MED.render(v, True, GRAY)
+        y = 240 + i * 44
+        screen.blit(kt, (W // 2 - 260, y))
+        screen.blit(vt, (W // 2 + 20, y))
+    if best > 0:
+        bs = FONT_MED.render(f"Best: {best}", True, ORANGE)
+        screen.blit(bs, (W // 2 - bs.get_width() // 2, 440))
+    st = FONT_BIG.render("Press SPACE to Start", True, WHITE)
+    screen.blit(st, (W // 2 - st.get_width() // 2, 510))
+
+
+def draw_gameover(score, best):
+    screen.fill(BG); draw_stars()
+    t = FONT_TITLE.render("GAME OVER", True, RED)
+    screen.blit(t, (W // 2 - t.get_width() // 2, 160))
+    sc = FONT_BIG.render(f"Score: {score}", True, YELLOW)
+    screen.blit(sc, (W // 2 - sc.get_width() // 2, 270))
+    if score >= best:
+        nb = FONT_BIG.render("NEW BEST!", True, ORANGE)
+        screen.blit(nb, (W // 2 - nb.get_width() // 2, 340))
+    rs = FONT_BIG.render("Press SPACE to Play Again", True, WHITE)
+    screen.blit(rs, (W // 2 - rs.get_width() // 2, 430))
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+def main():
+    state = "menu"
+    best  = 0
+
+    ship = None
+    asteroids = bullets = particles = powerups = floats = []
+    score = lives = wave = 0
+    rapid_time = multi_time = 0.0
+    powerup_timer = 0.0
+    wave_clear_pause = 0.0
+    paused = False
+
+    def start_game():
+        nonlocal ship, asteroids, bullets, particles, powerups, floats
+        nonlocal score, lives, wave, rapid_time, multi_time, powerup_timer, wave_clear_pause
+        ship = Ship()
+        score = 0; lives = 3; wave = 1
+        rapid_time = multi_time = 0.0
+        powerup_timer = random.uniform(8, 15)
+        wave_clear_pause = 0.0
+        asteroids = [Asteroid() for _ in range(4)]
+        bullets = []; particles = []; powerups = []; floats = []
+
+    def next_wave():
+        nonlocal wave, wave_clear_pause
+        wave += 1
+        wave_clear_pause = 2.0
+        count = 3 + wave
+        for _ in range(count):
+            asteroids.append(Asteroid())
+
+    while True:
+        dt = min(clock.tick(60) / 1000.0, 0.05)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit(); sys.exit()
+                if event.key == pygame.K_SPACE:
+                    if state == "menu":
+                        start_game(); state = "game"
+                    elif state == "gameover":
+                        start_game(); state = "game"
+                    elif state == "game" and not paused:
+                        b = ship.shoot()
+                        if b:
+                            bullets.append(b)
+                            if multi_time > 0:
+                                for off in [-18, 18]:
+                                    rad2 = math.radians(ship.angle + off)
+                                    bullets.append(Bullet(ship.x, ship.y, rad2))
+                if event.key == pygame.K_p and state == "game":
+                    paused = not paused
+
+        if state == "game" and not paused:
+            keys = pygame.key.get_pressed()
+            ship.update(dt, keys)
+
+            # Shoot held
+            if keys[pygame.K_SPACE]:
+                interval = 0.10 if rapid_time > 0 else 0.18
+                if ship.shoot_cooldown <= 0:
+                    ship.shoot_cooldown = interval
+                    rad = math.radians(ship.angle)
+                    bullets.append(Bullet(ship.x, ship.y, rad))
+                    if multi_time > 0:
+                        for off in [-18, 18]:
+                            r2 = math.radians(ship.angle + off)
+                            bullets.append(Bullet(ship.x, ship.y, r2))
+
+            # Update bullets
+            for b in bullets: b.update(dt)
+            bullets = [b for b in bullets if not b.dead()]
+
+            # Update asteroids
+            for a in asteroids: a.update(dt)
+
+            # Update powerups
+            for pw in powerups: pw.update(dt)
+            powerups = [pw for pw in powerups if not pw.dead()]
+
+            powerup_timer -= dt
+            if powerup_timer <= 0:
+                powerups.append(Powerup())
+                powerup_timer = random.uniform(10, 18)
+
+            rapid_time  = max(0, rapid_time - dt)
+            multi_time  = max(0, multi_time - dt)
+
+            # Update particles
+            for p in particles: p.update()
+            particles = [p for p in particles if not p.dead()]
+            for f in floats: f.update()
+            floats = [f for f in floats if not f.dead()]
+
+            # Bullet - asteroid collisions
+            new_asteroids = []
+            for a in asteroids:
+                hit = False
+                for b in bullets:
+                    if math.hypot(b.x - a.x, b.y - a.y) < a.radius + 4:
+                        hit = True
+                        bullets.remove(b)
+                        pts = a.score_value()
+                        score += pts
+                        floats.append(FloatText(a.x, a.y, f"+{pts}", YELLOW))
+                        for _ in range(14):
+                            particles.append(Particle(a.x, a.y, a.color))
+                        new_asteroids.extend(a.split())
+                        break
+                if not hit:
+                    new_asteroids.append(a)
+            asteroids = new_asteroids
+
+            # Ship - asteroid collision
+            if ship.invincible <= 0:
+                for a in asteroids:
+                    if math.hypot(ship.x - a.x, ship.y - a.y) < a.radius + ship.radius - 4:
+                        if ship.shield > 0:
+                            ship.shield -= 1
+                            ship.invincible = 1.5
+                            for _ in range(10):
+                                particles.append(Particle(ship.x, ship.y, BLUE))
+                        else:
+                            lives -= 1
+                            ship.invincible = 2.5
+                            for _ in range(20):
+                                particles.append(Particle(ship.x, ship.y, ORANGE))
+                            floats.append(FloatText(ship.x, ship.y - 30, "HIT!", RED))
+                            if lives <= 0:
+                                best = max(best, score)
+                                state = "gameover"
+                        break
+
+            # Ship - powerup collision
+            for pw in powerups[:]:
+                if math.hypot(ship.x - pw.x, ship.y - pw.y) < pw.radius + ship.radius:
+                    powerups.remove(pw)
+                    floats.append(FloatText(pw.x, pw.y - 20, pw.type.upper()+"!", GREEN))
+                    if pw.type == 'shield': ship.shield = min(ship.shield + 1, 3)
+                    elif pw.type == 'rapid': rapid_time = max(rapid_time, 0) + 7.0
+                    elif pw.type == 'multi': multi_time = max(multi_time, 0) + 7.0
+
+            # Wave clear
+            if not asteroids:
+                if wave_clear_pause <= 0:
+                    floats.append(FloatText(W // 2, H // 2, f"WAVE {wave} CLEAR!", CYAN))
+                    wave_clear_pause = 2.5
+                wave_clear_pause -= dt
+                if wave_clear_pause <= 0:
+                    next_wave()
+
+        # ── Draw ──
+        screen.fill(BG)
+        draw_stars()
+
+        if state == "menu":
+            draw_menu(best)
+
+        elif state == "game":
+            for a in asteroids: a.draw(screen)
+            for b in bullets:   b.draw(screen)
+            for pw in powerups: pw.draw(screen)
+            for p in particles: p.draw(screen)
+            for f in floats:    f.draw(screen)
+            ship.draw(screen)
+            draw_hud(score, lives, wave, wave, rapid_time, multi_time, ship.shield)
+
+            if paused:
+                ps = FONT_BIG.render("PAUSED  —  P to resume", True, WHITE)
+                screen.blit(ps, (W // 2 - ps.get_width() // 2, H // 2 - 20))
+
+        elif state == "gameover":
+            draw_gameover(score, best)
+
+        pygame.display.flip()
+
+
+if __name__ == "__main__":
+    main()
