@@ -1,0 +1,496 @@
+import pygame
+import random
+import math
+import sys
+from collections import deque
+
+pygame.init()
+W,H=1000,700
+screen=pygame.display.set_mode((W,H))
+pygame.display.set_caption("Dungeon Crawler: Depths Below")
+clock=pygame.time.Clock()
+
+BG=(10,8,18);WHITE=(255,255,255);GRAY=(110,110,130);DGRAY=(35,32,50)
+BLUE=(80,160,255);CYAN=(60,220,220);RED=(220,60,60);ORANGE=(230,140,40)
+YELLOW=(240,210,50);GREEN=(60,210,100);PURPLE=(160,80,220);BROWN=(120,80,40)
+GOLD=(255,200,50);PINK=(255,100,180);TEAL=(40,200,180)
+FLOOR=(28,24,40);WALL=(55,45,80);WALL2=(80,65,110);HUD=(8,6,20)
+
+F1=pygame.font.SysFont("Arial",38,bold=True)
+F2=pygame.font.SysFont("Arial",20,bold=True)
+F3=pygame.font.SysFont("Arial",14)
+FT=pygame.font.SysFont("Arial",56,bold=True)
+
+TILE=36
+def rnd(a,b): return random.uniform(a,b)
+def rndint(a,b): return random.randint(a,b)
+def dist(x1,y1,x2,y2): return math.hypot(x1-x2,y1-y2)
+
+def draw_text(surf,txt,font,col,cx,cy,center=True):
+    s=font.render(str(txt),True,col)
+    if center: surf.blit(s,(cx-s.get_width()//2,cy-s.get_height()//2))
+    else: surf.blit(s,(cx,cy))
+
+def draw_bar(surf,x,y,w,h,v,mx,col,bg=(30,25,45)):
+    pygame.draw.rect(surf,bg,(x,y,w,h),border_radius=3)
+    if mx>0: pygame.draw.rect(surf,col,(x,y,max(0,int(w*v/mx)),h),border_radius=3)
+
+# ── Map generation ────────────────────────────────────────────────────────────
+MAPW,MAPH=40,30
+def generate_map():
+    grid=[['#']*MAPW for _ in range(MAPH)]
+    rooms=[]
+    for _ in range(18):
+        rw=rndint(4,9); rh=rndint(4,8)
+        rx=rndint(1,MAPW-rw-1); ry=rndint(1,MAPH-rh-1)
+        overlap=any(rx<r[0]+r[2]+1 and rx+rw>r[0]-1 and ry<r[1]+r[3]+1 and ry+rh>r[1]-1 for r in rooms)
+        if not overlap:
+            for y in range(ry,ry+rh):
+                for x in range(rx,rx+rw): grid[y][x]='.'
+            rooms.append((rx,ry,rw,rh))
+    for i in range(len(rooms)-1):
+        x1,y1=rooms[i][0]+rooms[i][2]//2,rooms[i][1]+rooms[i][3]//2
+        x2,y2=rooms[i+1][0]+rooms[i+1][2]//2,rooms[i+1][1]+rooms[i+1][3]//2
+        cx,cy=x1,y1
+        while cx!=x2:
+            grid[cy][cx]='.'; cx+=1 if cx<x2 else -1
+        while cy!=y2:
+            grid[cy][cx]='.'; cy+=1 if cy<y2 else -1
+    return grid,rooms
+
+def bfs_path(grid,start,goal):
+    q=deque([(start,[start])]); seen={start}
+    dirs=[(0,1),(1,0),(0,-1),(-1,0)]
+    while q:
+        (r,c),path=q.popleft()
+        if (r,c)==goal: return path
+        for dr,dc in dirs:
+            nr,nc=r+dr,c+dc
+            if 0<=nr<MAPH and 0<=nc<MAPW and (nr,nc) not in seen and grid[nr][nc]!=('#'):
+                seen.add((nr,nc)); q.append(((nr,nc),path+[(nr,nc)]))
+    return []
+
+# ── Particle ──────────────────────────────────────────────────────────────────
+class Particle:
+    def __init__(self,x,y,col,spd=4,life=35):
+        self.x,self.y=float(x),float(y)
+        a=rnd(0,math.pi*2); s=rnd(spd*0.4,spd)
+        self.vx=math.cos(a)*s; self.vy=math.sin(a)*s
+        self.col=col; self.life=life; self.ml=life; self.r=rnd(2,4)
+    def update(self): self.x+=self.vx;self.y+=self.vy;self.life-=1
+    def dead(self): return self.life<=0
+    def draw(self,surf):
+        a=int(255*self.life/self.ml)
+        s=pygame.Surface((10,10),pygame.SRCALPHA)
+        pygame.draw.circle(s,(*self.col,a),(5,5),int(self.r)); surf.blit(s,(int(self.x)-5,int(self.y)-5))
+
+class FloatText:
+    def __init__(self,x,y,txt,col=WHITE):
+        self.x,self.y=float(x),float(y);self.txt=txt;self.col=col;self.a=255;self.vy=-1.2
+    def update(self): self.y+=self.vy;self.a-=5
+    def dead(self): return self.a<=0
+    def draw(self,surf):
+        img=F2.render(self.txt,True,self.col);img.set_alpha(int(self.a))
+        surf.blit(img,(int(self.x)-img.get_width()//2,int(self.y)))
+
+# ── Player ────────────────────────────────────────────────────────────────────
+class Player:
+    def __init__(self,r,c):
+        self.row,self.col=r,c; self.px=c*TILE+TILE//2; self.py=r*TILE+TILE//2
+        self.hp=80;self.max_hp=80;self.atk=15;self.defense=2;self.spd=4
+        self.xp=0;self.level=1;self.xp_next=80;self.gold=0
+        self.inv=[];self.equipped={'weapon':None,'armor':None}
+        self.atk_cd=0.0;self.move_cd=0.0;self.invincible=0.0
+        self.score=0;self.floor=1;self.kills=0
+        self.mana=50;self.max_mana=50;self.spell_cd=0.0
+        self.facing=(0,1);self.pulse=0.0
+
+    def update(self,dt,grid,keys):
+        self.pulse+=dt*3;self.atk_cd=max(0,self.atk_cd-dt)
+        self.move_cd=max(0,self.move_cd-dt);self.invincible=max(0,self.invincible-dt)
+        self.spell_cd=max(0,self.spell_cd-dt)
+        if self.move_cd<=0:
+            mv=None
+            if keys[pygame.K_LEFT] or keys[pygame.K_a]: mv=(0,-1)
+            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]: mv=(0,1)
+            elif keys[pygame.K_UP] or keys[pygame.K_w]: mv=(-1,0)
+            elif keys[pygame.K_DOWN] or keys[pygame.K_s]: mv=(1,0)
+            if mv:
+                dr,dc=mv; self.facing=mv
+                nr,nc=self.row+dr,self.col+dc
+                if 0<=nr<MAPH and 0<=nc<MAPW and grid[nr][nc]!=('#'):
+                    self.row,self.col=nr,nc; self.move_cd=0.12
+        self.px+=(self.col*TILE+TILE//2-self.px)*0.22
+        self.py+=(self.row*TILE+TILE//2-self.py)*0.22
+
+    def gain_xp(self,amount):
+        self.xp+=amount
+        if self.xp>=self.xp_next:
+            self.xp-=self.xp_next;self.level+=1;self.xp_next=int(self.xp_next*1.4)
+            self.max_hp+=15;self.hp=min(self.hp+20,self.max_hp);self.atk+=3
+            return True
+        return False
+
+    def take_damage(self,dmg):
+        if self.invincible>0: return
+        dmg=max(1,dmg-self.defense); self.hp=max(0,self.hp-dmg); self.invincible=0.6
+
+    def draw(self,surf,cam_x,cam_y):
+        cx=int(self.px)-cam_x; cy=int(self.py)-cam_y
+        # Glow
+        g=abs(math.sin(self.pulse))*0.3+0.7
+        s=pygame.Surface((50,50),pygame.SRCALPHA)
+        pygame.draw.circle(s,(*CYAN,int(40*g)),(25,25),22); surf.blit(s,(cx-25,cy-25))
+        if self.invincible>0 and int(self.invincible*8)%2==0: return
+        # Body
+        pygame.draw.circle(surf,BLUE,(cx,cy),13)
+        pygame.draw.circle(surf,WHITE,(cx,cy),13,2)
+        # Face
+        dr,dc=self.facing
+        fx,fy=cx+dc*6,cy+dr*6
+        pygame.draw.circle(surf,WHITE,(fx,fy),4)
+        # Weapon indicator
+        pygame.draw.line(surf,YELLOW,(cx,cy),(cx+dc*16,cy+dr*16),3)
+        draw_bar(surf,cx-12,cy-22,24,4,self.hp,self.max_hp,GREEN)
+
+# ── Enemy ─────────────────────────────────────────────────────────────────────
+ENEMY_TYPES={
+    'slime':{'hp':25,'atk':8,'spd':0.5,'col':GREEN,'r':10,'xp':15,'gold':3,'score':30},
+    'skeleton':{'hp':45,'atk':14,'spd':0.35,'col':GRAY,'r':12,'xp':25,'gold':6,'score':60},
+    'vampire':{'hp':60,'atk':20,'spd':0.4,'col':PURPLE,'r':12,'xp':40,'gold':10,'score':100},
+    'golem':{'hp':120,'atk':28,'spd':0.2,'col':BROWN,'r':16,'xp':60,'gold':18,'score':200},
+    'boss':{'hp':400,'atk':40,'spd':0.3,'col':RED,'r':22,'xp':200,'gold':60,'score':1000},
+}
+
+class Monster:
+    def __init__(self,row,col,kind,floor=1):
+        self.row,self.col=row,col; self.kind=kind
+        cfg=ENEMY_TYPES.get(kind,ENEMY_TYPES['slime'])
+        self.hp=cfg['hp']+floor*8; self.max_hp=self.hp
+        self.atk=cfg['atk']+floor*2; self.spd=cfg['spd']
+        self.col_=cfg['col']; self.radius=cfg['r']
+        self.xp_val=cfg['xp']; self.gold_val=cfg['gold']; self.score_val=cfg['score']
+        self.px=col*TILE+TILE//2; self.py=row*TILE+TILE//2
+        self.path=[]; self.path_timer=0.0; self.atk_cd=0.0; self.pulse=rnd(0,6)
+        self.alive=True
+
+    def update(self,dt,grid,pr,pc,atk_callback):
+        self.pulse+=dt*3; self.path_timer-=dt; self.atk_cd=max(0,self.atk_cd-dt)
+        if self.path_timer<=0:
+            self.path=bfs_path(grid,(self.row,self.col),(pr,pc)); self.path_timer=0.4
+        if len(self.path)>1:
+            nr,nc=self.path[1]
+            self.row+=(nr-self.row)*self.spd; self.col+=(nc-self.col)*self.spd
+            if abs(self.row-nr)<0.05 and abs(self.col-nc)<0.05:
+                self.row,self.col=nr,nc; self.path.pop(0) if len(self.path)>1 else None
+        self.px+=(self.col*TILE+TILE//2-self.px)*0.2
+        self.py+=(self.row*TILE+TILE//2-self.py)*0.2
+        # Attack
+        if dist(self.px,self.py,pr*TILE+TILE//2,pc*TILE+TILE//2)<TILE*1.5 and self.atk_cd<=0:
+            atk_callback(self.atk); self.atk_cd=1.2
+
+    def take_damage(self,dmg):
+        self.hp=max(0,self.hp-dmg); self.alive=self.hp>0
+
+    def draw(self,surf,cam_x,cam_y):
+        cx=int(self.px)-cam_x; cy=int(self.py)-cam_y
+        g=abs(math.sin(self.pulse))*0.4+0.6
+        s=pygame.Surface((60,60),pygame.SRCALPHA)
+        pygame.draw.circle(s,(*self.col_,int(45*g)),(30,30),26); surf.blit(s,(cx-30,cy-30))
+        pygame.draw.circle(surf,self.col_,(cx,cy),self.radius)
+        pygame.draw.circle(surf,WHITE,(cx,cy),self.radius,2)
+        if self.kind=='boss':
+            for i in range(6):
+                a=math.radians(self.pulse*20+i*60)
+                pygame.draw.circle(surf,ORANGE,(cx+int(math.cos(a)*28),cy+int(math.sin(a)*28)),7)
+        draw_bar(surf,cx-self.radius,cy-self.radius-8,self.radius*2,4,self.hp,self.max_hp,RED)
+
+# ── Items ─────────────────────────────────────────────────────────────────────
+ITEM_POOL=[
+    {'name':'Iron Sword','type':'weapon','atk':10,'col':GRAY,'price':40},
+    {'name':'Fire Sword','type':'weapon','atk':22,'col':RED,'price':90},
+    {'name':'Shadow Blade','type':'weapon','atk':35,'col':PURPLE,'price':160},
+    {'name':'Leather Armor','type':'armor','def':5,'col':BROWN,'price':50},
+    {'name':'Chain Mail','type':'armor','def':12,'col':BLUE,'price':110},
+    {'name':'Dragon Plate','type':'armor','def':20,'col':ORANGE,'price':200},
+    {'name':'Health Potion','type':'potion','hp':40,'col':RED,'price':25},
+    {'name':'Mana Potion','type':'mana','mp':30,'col':BLUE,'price':20},
+    {'name':'Elixir','type':'elixir','hp':80,'mp':50,'col':GOLD,'price':80},
+]
+
+class Item:
+    def __init__(self,row,col,data):
+        self.row,self.col=row,col; self.data=data
+        self.px=col*TILE+TILE//2; self.py=row*TILE+TILE//2; self.pulse=rnd(0,6)
+    def update(self,dt): self.pulse+=dt*3
+    def draw(self,surf,cam_x,cam_y):
+        cx=int(self.px)-cam_x; cy=int(self.py)-cam_y
+        g=abs(math.sin(self.pulse))*0.5+0.5; col=self.data['col']
+        s=pygame.Surface((30,30),pygame.SRCALPHA)
+        pygame.draw.circle(s,(*col,int(70*g)),(15,15),13); surf.blit(s,(cx-15,cy-15))
+        pygame.draw.rect(surf,col,(cx-7,cy-7,14,14),border_radius=3)
+        pygame.draw.rect(surf,WHITE,(cx-7,cy-7,14,14),1,border_radius=3)
+
+class Stairs:
+    def __init__(self,row,col):
+        self.row,self.col=row,col; self.pulse=0.0
+    def update(self,dt): self.pulse+=dt*2
+    def draw(self,surf,cam_x,cam_y):
+        cx=col*TILE+TILE//2-cam_x; cy=self.row*TILE+TILE//2-cam_y
+        cx=self.col*TILE+TILE//2-cam_x
+        g=abs(math.sin(self.pulse))*0.4+0.6
+        s=pygame.Surface((40,40),pygame.SRCALPHA)
+        pygame.draw.circle(s,(*GOLD,int(60*g)),(20,20),18); surf.blit(s,(cx-20,cy-20))
+        pygame.draw.polygon(surf,GOLD,[(cx,cy-14),(cx-12,cy+8),(cx+12,cy+8)])
+        pygame.draw.polygon(surf,WHITE,[(cx,cy-14),(cx-12,cy+8),(cx+12,cy+8)],2)
+
+# ── Camera ────────────────────────────────────────────────────────────────────
+VIEW_W,VIEW_H=W,H-80
+def get_camera(px,py):
+    cam_x=int(px)-VIEW_W//2; cam_y=int(py)-VIEW_H//2
+    cam_x=max(0,min(cam_x,MAPW*TILE-VIEW_W)); cam_y=max(0,min(cam_y,MAPH*TILE-VIEW_H))
+    return cam_x,cam_y
+
+# ── Draw map ──────────────────────────────────────────────────────────────────
+def draw_map(surf,grid,cam_x,cam_y,discovered):
+    c0=cam_x//TILE; r0=cam_y//TILE
+    c1=min(MAPW,(cam_x+VIEW_W)//TILE+2); r1=min(MAPH,(cam_y+VIEW_H)//TILE+2)
+    for r in range(r0,r1):
+        for c in range(c0,c1):
+            if not discovered[r][c]: continue
+            tx=c*TILE-cam_x; ty=r*TILE-cam_y
+            if grid[r][c]=='#':
+                pygame.draw.rect(surf,WALL,(tx,ty,TILE,TILE))
+                pygame.draw.rect(surf,WALL2,(tx,ty,TILE,TILE),1)
+            else:
+                pygame.draw.rect(surf,FLOOR,(tx,ty,TILE,TILE))
+                pygame.draw.rect(surf,(35,30,50),(tx,ty,TILE,TILE),1)
+
+def update_vision(discovered,pr,pc,radius=5):
+    for dr in range(-radius,radius+1):
+        for dc in range(-radius,radius+1):
+            nr,nc=pr+dr,pc+dc
+            if 0<=nr<MAPH and 0<=nc<MAPW and math.hypot(dr,dc)<=radius:
+                discovered[nr][nc]=True
+
+# ── HUD ───────────────────────────────────────────────────────────────────────
+def draw_hud(surf,player):
+    pygame.draw.rect(surf,HUD,(0,H-80,W,80))
+    pygame.draw.line(surf,(40,35,60),(0,H-80),(W,H-80),1)
+    draw_bar(surf,16,H-68,180,14,player.hp,player.max_hp,GREEN)
+    draw_text(surf,f"HP {player.hp}/{player.max_hp}",F3,WHITE,16,H-52,False)
+    draw_bar(surf,16,H-38,180,10,player.mana,player.max_mana,BLUE)
+    draw_text(surf,"MP",F3,BLUE,16,H-26,False)
+    draw_bar(surf,210,H-68,160,10,player.xp,player.xp_next,CYAN)
+    draw_text(surf,f"LV{player.level}",F2,CYAN,210,H-55,False)
+    draw_text(surf,f"Floor {player.floor}",F2,ORANGE,W//2,H-60)
+    draw_text(surf,f"Score: {player.score}",F2,YELLOW,W-210,H-68,False)
+    draw_text(surf,f"Gold: {player.gold}",F2,GOLD,W-210,H-44,False)
+    draw_text(surf,f"ATK:{player.atk} DEF:{player.defense}",F3,GRAY,W-210,H-22,False)
+    draw_text(surf,"WASD:Move  SPACE:Attack  E:Spell  I:Inventory",F3,GRAY,W//2,H-20)
+
+# ── Inventory screen ──────────────────────────────────────────────────────────
+def draw_inventory(surf,player,selected):
+    surf.fill(BG)
+    draw_text(surf,"INVENTORY",FT,GOLD,W//2,80)
+    draw_text(surf,f"Gold: {player.gold}   ATK: {player.atk}   DEF: {player.defense}",F2,GRAY,W//2,140)
+    for i,item in enumerate(player.inv[:12]):
+        col_=i//4; row_=i%4
+        bx=80+col_*300; by=180+row_*100
+        active=i==selected; border=GOLD if active else DGRAY
+        pygame.draw.rect(surf,DGRAY,(bx,by,280,85),border_radius=8)
+        pygame.draw.rect(surf,border,(bx,by,280,85),2,border_radius=8)
+        draw_text(surf,item['name'],F2,item['col'],bx+10,by+20,False)
+        if item['type']=='weapon': draw_text(surf,f"ATK +{item['atk']}",F3,YELLOW,bx+10,by+48,False)
+        elif item['type']=='armor': draw_text(surf,f"DEF +{item['def']}",F3,BLUE,bx+10,by+48,False)
+        elif 'hp' in item: draw_text(surf,f"Heal {item['hp']} HP",F3,GREEN,bx+10,by+48,False)
+    draw_text(surf,"Arrow Keys: Select   E: Equip/Use   I: Close",F2,GRAY,W//2,620)
+
+# ── Level up screen ───────────────────────────────────────────────────────────
+LVL_CHOICES=[
+    ("Strength +8","atk",8,RED),("Vitality +20 HP","hp",20,GREEN),
+    ("Defense +5","def",5,BLUE),("Mana +25","mana",25,CYAN),
+    ("Speed +0.02","spd",0.02,YELLOW),("Magic ATK","magic",0,PURPLE),
+]
+
+def draw_levelup(surf,choices):
+    surf.fill(BG)
+    draw_text(surf,"LEVEL UP!",FT,YELLOW,W//2,120)
+    for i,(name,key,val,col) in enumerate(choices):
+        bx=W//2-320+i*220; by=260
+        pygame.draw.rect(surf,DGRAY,(bx,by,200,160),border_radius=12)
+        pygame.draw.rect(surf,col,(bx,by,200,160),3,border_radius=12)
+        draw_text(surf,name,F2,col,bx+100,by+70)
+        draw_text(surf,f"[{i+1}]",F1,WHITE,bx+100,by+120)
+    draw_text(surf,"Press 1, 2, or 3",F2,GRAY,W//2,520)
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+def new_floor(floor_num,player=None):
+    grid,rooms=generate_map()
+    discovered=[[False]*MAPW for _ in range(MAPH)]
+    start_r=rooms[0][1]+rooms[0][3]//2; start_c=rooms[0][0]+rooms[0][2]//2
+    if player is None:
+        player=Player(start_r,start_c)
+    else:
+        player.row,player.col=start_r,start_c
+        player.px=player.col*TILE+TILE//2; player.py=player.row*TILE+TILE//2
+    monsters=[]; items=[]; projectiles=[]
+    kinds_by_floor=['slime','skeleton','vampire','golem']
+    avail=kinds_by_floor[:min(floor_num,4)]
+    for room in rooms[1:]:
+        rc=room[1]+room[3]//2; cc=room[0]+room[2]//2
+        count=rndint(1,3+floor_num)
+        for _ in range(count):
+            mr=room[1]+rndint(1,room[3]-1); mc=room[0]+rndint(1,room[2]-1)
+            kind='boss' if floor_num%5==0 and room==rooms[-2] else random.choice(avail)
+            monsters.append(Monster(mr,mc,kind,floor_num))
+        if rnd(0,1)<0.5:
+            idata=random.choice(ITEM_POOL)
+            items.append(Item(room[1]+1,room[0]+1,dict(idata)))
+    stairs_r=rooms[-1][1]+rooms[-1][3]//2; stairs_c=rooms[-1][0]+rooms[-1][2]//2
+    stairs=Stairs(stairs_r,stairs_c)
+    return grid,discovered,player,monsters,items,stairs
+
+def main():
+    state='menu'; floor=1
+    grid=discovered=player=monsters=items=stairs=None
+    particles=[]; floats=[]; inv_sel=0; lvl_choices=[]
+    paused=False
+
+    def start():
+        nonlocal grid,discovered,player,monsters,items,stairs,floor,particles,floats
+        floor=1
+        grid,discovered,player,monsters,items,stairs=new_floor(floor)
+        particles=[]; floats=[]
+
+    while True:
+        dt=min(clock.tick(60)/1000.0,0.05)
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT: pygame.quit();sys.exit()
+            if event.type==pygame.KEYDOWN:
+                if event.key==pygame.K_ESCAPE:
+                    if state=='inventory': state='game'
+                    else: pygame.quit();sys.exit()
+                if event.key==pygame.K_SPACE:
+                    if state=='menu': start();state='game'
+                    elif state=='gameover': start();state='game'
+                    elif state=='game':
+                        # Attack
+                        dr,dc=player.facing
+                        if player.atk_cd<=0:
+                            player.atk_cd=0.4
+                            for m in monsters:
+                                if dist(m.px,m.py,player.px,player.py)<TILE*1.8:
+                                    m.take_damage(player.atk)
+                                    for _ in range(8): particles.append(Particle(m.px,m.py,m.col_))
+                                    floats.append(FloatText(m.px,m.py-20,f"-{player.atk}",YELLOW))
+                if event.key==pygame.K_e:
+                    if state=='game':
+                        # Spell - AoE
+                        if player.mana>=20 and player.spell_cd<=0:
+                            player.mana=max(0,player.mana-20); player.spell_cd=2.0
+                            for m in monsters:
+                                if dist(m.px,m.py,player.px,player.py)<TILE*3:
+                                    dmg=player.atk*2; m.take_damage(dmg)
+                                    for _ in range(10): particles.append(Particle(m.px,m.py,PURPLE))
+                                    floats.append(FloatText(m.px,m.py-20,f"SPELL!",PURPLE))
+                    elif state=='inventory':
+                        if player.inv and inv_sel<len(player.inv):
+                            item=player.inv[inv_sel]
+                            if item['type']=='weapon': player.atk=player.atk-( player.equipped['weapon']['atk'] if player.equipped['weapon'] else 0)+item['atk'];player.equipped['weapon']=item
+                            elif item['type']=='armor': player.defense=player.defense-(player.equipped['armor']['def'] if player.equipped['armor'] else 0)+item['def'];player.equipped['armor']=item
+                            elif item['type'] in ('potion','elixir'):
+                                if 'hp' in item: player.hp=min(player.max_hp,player.hp+item['hp'])
+                                if 'mp' in item: player.mana=min(player.max_mana,player.mana+item['mp'])
+                                player.inv.pop(inv_sel); inv_sel=max(0,inv_sel-1)
+                if event.key==pygame.K_i:
+                    if state=='game': state='inventory'
+                    elif state=='inventory': state='game'
+                if state=='inventory':
+                    if event.key==pygame.K_DOWN: inv_sel=min(len(player.inv)-1,inv_sel+1)
+                    if event.key==pygame.K_UP: inv_sel=max(0,inv_sel-1)
+                if state=='levelup':
+                    for i,ch in enumerate(lvl_choices):
+                        if event.key==pygame.K_1+i:
+                            name,key,val,col=ch
+                            if key=='atk': player.atk+=val
+                            elif key=='hp': player.max_hp+=val;player.hp=min(player.hp+val,player.max_hp)
+                            elif key=='def': player.defense+=val
+                            elif key=='mana': player.max_mana+=val;player.mana=min(player.mana+val,player.max_mana)
+                            elif key=='spd': player.spd+=val
+                            state='game'
+                if event.key==pygame.K_p and state=='game': paused=not paused
+
+        if state=='game' and not paused:
+            keys=pygame.key.get_pressed()
+            player.update(dt,grid,keys)
+            update_vision(discovered,player.row,player.col)
+            player.atk_cd=max(0,player.atk_cd-dt)
+
+            dead_monsters=[]
+            for m in monsters:
+                def atk_player(dmg,m=m): player.take_damage(dmg)
+                m.update(dt,grid,player.row,player.col,atk_player)
+                if not m.alive:
+                    dead_monsters.append(m)
+                    player.score+=m.score_val; player.gold+=m.gold_val; player.kills+=1
+                    for _ in range(12): particles.append(Particle(m.px,m.py,m.col_))
+                    floats.append(FloatText(m.px,m.py-30,f"+{m.score_val}",GOLD))
+                    if player.gain_xp(m.xp_val):
+                        random.shuffle(LVL_CHOICES); lvl_choices=LVL_CHOICES[:3]; state='levelup'
+            monsters=[m for m in monsters if m.alive]
+
+            # Pick up items
+            for it in items[:]:
+                if player.row==it.row and player.col==it.col:
+                    player.inv.append(it.data); items.remove(it)
+                    floats.append(FloatText(player.px,player.py-30,it.data['name'],it.data['col']))
+            for it in items: it.update(dt)
+            stairs.update(dt)
+
+            # Stairs
+            if player.row==stairs.row and player.col==stairs.col:
+                floor+=1; player.floor=floor
+                player.score+=floor*50
+                grid,discovered,player,monsters,items,stairs=new_floor(floor,player)
+
+            for p in particles: p.update()
+            particles=[p for p in particles if not p.dead()]
+            for f in floats: f.update()
+            floats=[f for f in floats if not f.dead()]
+            if player.hp<=0: state='gameover'
+
+        # Draw
+        screen.fill(BG)
+        if state=='menu':
+            screen.fill(BG)
+            draw_text(screen,"DUNGEON CRAWLER",FT,PURPLE,W//2,130)
+            draw_text(screen,"Depths Below",F1,CYAN,W//2,215)
+            lines=[("WASD","Move"),("SPACE","Attack"),("E","Cast Spell (AoE)"),("I","Inventory"),("Reach stairs ▲ to go deeper!","")]
+            for i,(k,v) in enumerate(lines):
+                draw_text(screen,k,F2,YELLOW,W//2-180,310+i*46)
+                if v: draw_text(screen,v,F2,GRAY,W//2+60,310+i*46)
+            draw_text(screen,"Press SPACE to Start",F1,WHITE,W//2,560)
+        elif state=='gameover':
+            screen.fill(BG)
+            draw_text(screen,"YOU DIED",FT,RED,W//2,160)
+            draw_text(screen,f"Score: {player.score}",F1,YELLOW,W//2,270)
+            draw_text(screen,f"Floor: {player.floor}   Kills: {player.kills}   Gold: {player.gold}",F2,GRAY,W//2,350)
+            draw_text(screen,"Press SPACE to Try Again",F1,WHITE,W//2,460)
+        elif state=='inventory': draw_inventory(screen,player,inv_sel)
+        elif state=='levelup': draw_levelup(screen,lvl_choices)
+        elif state in ('game',):
+            cam_x,cam_y=get_camera(player.px,player.py)
+            draw_map(screen,grid,cam_x,cam_y,discovered)
+            for it in items: it.draw(screen,cam_x,cam_y)
+            stairs.draw(screen,cam_x,cam_y)
+            for m in monsters: m.draw(screen,cam_x,cam_y)
+            for p in particles: p.draw(screen)
+            for f in floats: f.draw(screen)
+            player.draw(screen,cam_x,cam_y)
+            draw_hud(screen,player)
+            if paused: draw_text(screen,"PAUSED — P to resume",F1,WHITE,W//2,H//2)
+
+        pygame.display.flip()
+
+if __name__=="__main__": main()
