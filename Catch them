@@ -1,0 +1,48 @@
+import pygame, random
+
+pygame.init()
+WIDTH, HEIGHT = 600, 400
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+clock = pygame.time.Clock()
+
+basket = pygame.Rect(250, 350, 100, 20)
+ball = pygame.Rect(random.randint(0, 580), 0, 20, 20)
+speed = 5
+score = 0
+
+font = pygame.font.SysFont(None, 35)
+
+running = True
+while running:
+    screen.fill((30, 30, 30))
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        basket.x -= 7
+    if keys[pygame.K_RIGHT]:
+        basket.x += 7
+
+    ball.y += speed
+
+    if basket.colliderect(ball):
+        score += 1
+        ball.x = random.randint(0, 580)
+        ball.y = 0
+
+    if ball.y > HEIGHT:
+        running = False
+
+    pygame.draw.rect(screen, (0, 255, 0), basket)
+    pygame.draw.rect(screen, (255, 0, 0), ball)
+
+    text = font.render(f"Score: {score}", True, (255, 255, 255))
+    screen.blit(text, (10, 10))
+
+    pygame.display.update()
+    clock.tick(60)
+
+pygame.quit()
