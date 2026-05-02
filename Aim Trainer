@@ -1,0 +1,477 @@
+import pygame
+import random
+import math
+import time
+import sys
+
+pygame.init()
+
+W, H = 900, 600
+screen = pygame.display.set_mode((W, H))
+pygame.display.set_caption("Fortnite Aim Trainer")
+clock = pygame.time.Clock()
+
+# Colors
+BG       = (15, 15, 35)
+GRID     = (255, 255, 255, 10)
+WHITE    = (255, 255, 255)
+GRAY     = (120, 120, 140)
+DARK     = (30, 30, 55)
+BLUE     = (55, 138, 221)
+GREEN    = (80, 200, 100)
+RED      = (220, 70, 70)
+ORANGE   = (230, 140, 50)
+YELLOW   = (230, 210, 60)
+HUD_BG   = (25, 25, 48)
+HUD_LINE = (50, 50, 80)
+
+FONT_BIG   = pygame.font.SysFont("Arial", 36, bold=True)
+FONT_MED   = pygame.font.SysFont("Arial", 22, bold=True)
+FONT_SM    = pygame.font.SysFont("Arial", 16)
+FONT_TITLE = pygame.font.SysFont("Arial", 52, bold=True)
+
+GAME_TIME = 30
+MODES = ["Classic", "Moving", "Shrinking", "Flick Shot"]
+
+# ── Target ────────────────────────────────────────────────────────────────────
+class Target:
+    PALETTE = [
+        (220,  80,  80), (80, 180, 220), (80, 220, 120),
+        (220, 160,  60), (160,  80, 220), (220, 100, 160),
+    ]
+
+    def __init__(self, mode):
+        self.mode = mode
+        if mode == "Flick Shot":
+            self.max_r = random.randint(14, 22)
+            self.life  = 0.85
+        elif mode == "Shrinking":
+            self.max_r = random.randint(30, 48)
+            self.life  = 2.2
+        else:
+            self.max_r = random.randint(18, 36)
+            self.life  = 3.5
+
+        self.r     = float(self.max_r)
+        self.x     = random.randint(int(self.r), W - int(self.r))
+        self.y     = random.randint(80 + int(self.r), H - int(self.r))
+        self.color = random.choice(self.PALETTE)
+        self.born  = time.time()
+
+        speed = random.uniform(2.5, 5.0)
+        angle = random.uniform(0, math.pi * 2)
+        self.vx = math.cos(angle) * speed
+        self.vy = math.sin(angle) * speed
+
+    @property
+    def age(self):
+        return time.time() - self.born
+
+    @property
+    def frac(self):
+        return min(self.age / self.life, 1.0)
+
+    def expired(self):
+        return self.age >= self.life or self.r < 2
+
+    def update(self):
+        if self.mode == "Moving":
+            self.x += self.vx
+            self.y += self.vy
+            if self.x - self.r < 0 or self.x + self.r > W:
+                self.vx *= -1
+            if self.y - self.r < 80 or self.y + self.r > H:
+                self.vy *= -1
+        if self.mode == "Shrinking":
+            self.r = max(2, self.max_r * (1 - self.frac))
+
+    def hit(self, mx, my):
+        return math.hypot(mx - self.x, my - self.y) <= self.r
+
+    def draw(self, surf):
+        f = self.frac
+        # Urgency color shift
+        if f < 0.5:
+            col = self.color
+        elif f < 0.75:
+            t = (f - 0.5) / 0.25
+            col = tuple(int(self.color[i] + (ORANGE[i] - self.color[i]) * t) for i in range(3))
+        else:
+            t = (f - 0.75) / 0.25
+            col = tuple(int(ORANGE[i] + (RED[i] - ORANGE[i]) * t) for i in range(3))
+
+        ir = int(self.r)
+        cx, cy = int(self.x), int(self.y)
+
+        # Glow ring
+        alpha_surf = pygame.Surface((ir * 4, ir * 4), pygame.SRCALPHA)
+        glow_alpha = max(0, int(80 * (1 - f)))
+        pygame.draw.circle(alpha_surf, (*col, glow_alpha), (ir * 2, ir * 2), ir + 6)
+        surf.blit(alpha_surf, (cx - ir * 2, cy - ir * 2))
+
+        # Main body
+        pygame.draw.circle(surf, col, (cx, cy), ir)
+
+        # Inner ring
+        if ir > 6:
+            pygame.draw.circle(surf, WHITE, (cx, cy), ir // 2, 2)
+
+        # Center dot
+        pygame.draw.circle(surf, WHITE, (cx, cy), 4)
+
+        # Timer arc (drawn as a pie piece overlay)
+        if ir > 8:
+            arc_surf = pygame.Surface((ir * 2 + 4, ir * 2 + 4), pygame.SRCALPHA)
+            arc_rect = pygame.Rect(2, 2, ir * 2, ir * 2)
+            start_angle = -math.pi / 2
+            end_angle   = start_angle + math.pi * 2 * (1 - f)
+            try:
+                pygame.draw.arc(arc_surf, (255, 255, 255, 160), arc_rect,
+                                start_angle, end_angle, 3)
+            except Exception:
+                pass
+            surf.blit(arc_surf, (cx - ir - 2, cy - ir - 2))
+
+
+# ── Particle ──────────────────────────────────────────────────────────────────
+class Particle:
+    def __init__(self, x, y, color):
+        self.x, self.y = float(x), float(y)
+        angle = random.uniform(0, math.pi * 2)
+        spd   = random.uniform(2.5, 8.0)
+        self.vx = math.cos(angle) * spd
+        self.vy = math.sin(angle) * spd
+        self.r  = random.uniform(2, 6)
+        self.alpha = 255
+        self.color = color
+
+    def update(self):
+        self.x  += self.vx
+        self.y  += self.vy
+        self.vy += 0.25
+        self.alpha -= 12
+
+    def dead(self):
+        return self.alpha <= 0
+
+    def draw(self, surf):
+        s = pygame.Surface((int(self.r) * 2 + 2, int(self.r) * 2 + 2), pygame.SRCALPHA)
+        pygame.draw.circle(s, (*self.color, int(self.alpha)),
+                           (int(self.r) + 1, int(self.r) + 1), int(self.r))
+        surf.blit(s, (int(self.x) - int(self.r), int(self.y) - int(self.r)))
+
+
+# ── Floating text ─────────────────────────────────────────────────────────────
+class FloatText:
+    def __init__(self, x, y, text, color=WHITE):
+        self.x, self.y = float(x), float(y)
+        self.text  = text
+        self.color = color
+        self.alpha = 255
+        self.vy    = -1.5
+
+    def update(self):
+        self.y    += self.vy
+        self.alpha -= 7
+
+    def dead(self):
+        return self.alpha <= 0
+
+    def draw(self, surf):
+        img = FONT_MED.render(self.text, True, self.color)
+        img.set_alpha(int(self.alpha))
+        surf.blit(img, (int(self.x) - img.get_width() // 2, int(self.y)))
+
+
+# ── Draw helpers ──────────────────────────────────────────────────────────────
+def draw_grid():
+    for x in range(0, W, 50):
+        pygame.draw.line(screen, (255, 255, 255, 8), (x, 0), (x, H))
+    for y in range(80, H, 50):
+        pygame.draw.line(screen, (255, 255, 255, 8), (0, y), (W, y))
+
+
+def draw_hud(score, hits, misses, streak, best, time_left, mode_idx):
+    pygame.draw.rect(screen, HUD_BG, (0, 0, W, 70))
+    pygame.draw.line(screen, HUD_LINE, (0, 70), (W, 70), 1)
+
+    stats = [
+        ("SCORE",    str(score)),
+        ("HITS",     str(hits)),
+        ("MISSES",   str(misses)),
+        ("ACCURACY", f"{round(hits / max(hits + misses, 1) * 100)}%"),
+        ("STREAK",   str(streak)),
+        ("BEST",     str(best)),
+        ("MODE",     MODES[mode_idx]),
+        ("TIME",     f"{time_left:.1f}s"),
+    ]
+
+    col_w = W // len(stats)
+    for i, (label, val) in enumerate(stats):
+        cx = i * col_w + col_w // 2
+        color = BLUE if label == "TIME" and time_left < 5 else WHITE
+        if label == "TIME" and time_left < 5:
+            color = RED
+        v = FONT_MED.render(val, True, color)
+        l = FONT_SM.render(label, True, GRAY)
+        screen.blit(v, (cx - v.get_width() // 2, 10))
+        screen.blit(l, (cx - l.get_width() // 2, 48))
+
+    # Timer bar
+    bar_w = int((time_left / GAME_TIME) * W)
+    bar_color = GREEN if time_left > 10 else ORANGE if time_left > 5 else RED
+    pygame.draw.rect(screen, (40, 40, 60), (0, 68, W, 4))
+    pygame.draw.rect(screen, bar_color, (0, 68, bar_w, 4))
+
+
+def draw_menu(mode_idx, best_score):
+    screen.fill(BG)
+    title = FONT_TITLE.render("AIM TRAINER", True, BLUE)
+    screen.blit(title, (W // 2 - title.get_width() // 2, 80))
+
+    sub = FONT_MED.render("Fortnite-style • Click targets as fast as you can!", True, GRAY)
+    screen.blit(sub, (W // 2 - sub.get_width() // 2, 155))
+
+    # Mode buttons
+    btn_w, btn_h = 180, 44
+    total_w = len(MODES) * btn_w + (len(MODES) - 1) * 12
+    sx = W // 2 - total_w // 2
+    for i, m in enumerate(MODES):
+        bx = sx + i * (btn_w + 12)
+        by = 220
+        active = i == mode_idx
+        color  = BLUE if active else HUD_BG
+        border = BLUE if active else HUD_LINE
+        pygame.draw.rect(screen, color,  (bx, by, btn_w, btn_h), border_radius=8)
+        pygame.draw.rect(screen, border, (bx, by, btn_w, btn_h), 2, border_radius=8)
+        lbl = FONT_SM.render(m, True, WHITE)
+        screen.blit(lbl, (bx + btn_w // 2 - lbl.get_width() // 2,
+                          by + btn_h // 2 - lbl.get_height() // 2))
+
+    # Instructions
+    lines = [
+        "• Targets expire — don't let them get away!",
+        "• Bigger streak = more points per hit",
+        "• Moving: targets bounce  |  Shrinking: act fast  |  Flick: tiny & quick",
+    ]
+    for i, line in enumerate(lines):
+        t = FONT_SM.render(line, True, GRAY)
+        screen.blit(t, (W // 2 - t.get_width() // 2, 300 + i * 28))
+
+    # Best score
+    if best_score > 0:
+        bs = FONT_MED.render(f"Best Score: {best_score}", True, YELLOW)
+        screen.blit(bs, (W // 2 - bs.get_width() // 2, 400))
+
+    # Start
+    start = FONT_BIG.render("Press SPACE or click to Start", True, WHITE)
+    screen.blit(start, (W // 2 - start.get_width() // 2, 470))
+
+    # Controls
+    ctrl = FONT_SM.render("1-4: change mode   ESC: quit", True, GRAY)
+    screen.blit(ctrl, (W // 2 - ctrl.get_width() // 2, 545))
+
+
+def draw_results(score, hits, misses, streak_best, best_score):
+    screen.fill(BG)
+    t = FONT_TITLE.render("ROUND OVER", True, ORANGE)
+    screen.blit(t, (W // 2 - t.get_width() // 2, 60))
+
+    total = hits + misses
+    acc   = round(hits / max(total, 1) * 100)
+
+    results = [
+        ("Final Score",  str(score),  WHITE),
+        ("Hits",         str(hits),   GREEN),
+        ("Misses",       str(misses), RED),
+        ("Accuracy",     f"{acc}%",   BLUE),
+        ("Best Streak",  str(streak_best), YELLOW),
+    ]
+
+    for i, (label, val, col) in enumerate(results):
+        y = 170 + i * 58
+        lbl = FONT_MED.render(label, True, GRAY)
+        v   = FONT_BIG.render(val, True, col)
+        screen.blit(lbl, (W // 2 - 160, y))
+        screen.blit(v,   (W // 2 + 60,  y - 4))
+
+    if score >= best_score:
+        new = FONT_MED.render("NEW BEST!", True, YELLOW)
+        screen.blit(new, (W // 2 - new.get_width() // 2, 470))
+
+    again = FONT_BIG.render("Press SPACE to play again", True, WHITE)
+    screen.blit(again, (W // 2 - again.get_width() // 2, 520))
+
+
+# ── Spawn logic ───────────────────────────────────────────────────────────────
+def max_targets(mode_idx):
+    return {0: 4, 1: 3, 2: 3, 3: 5}[mode_idx]
+
+def spawn_interval(mode_idx):
+    return {0: 0.55, 1: 0.65, 2: 0.7, 3: 0.35}[mode_idx]
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+def main():
+    state      = "menu"   # menu | game | results
+    mode_idx   = 0
+    best_score = 0
+
+    score = hits = misses = streak = streak_best = 0
+    targets   = []
+    particles = []
+    floats    = []
+    time_left = float(GAME_TIME)
+    last_spawn = 0.0
+    game_start = 0.0
+
+    pygame.mouse.set_visible(True)
+    crosshair_visible = True
+
+    while True:
+        dt = clock.tick(60) / 1000.0
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit(); sys.exit()
+                if event.key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4):
+                    mode_idx = event.key - pygame.K_1
+                if event.key == pygame.K_SPACE:
+                    if state in ("menu", "results"):
+                        # Start game
+                        score = hits = misses = streak = streak_best = 0
+                        targets.clear(); particles.clear(); floats.clear()
+                        time_left  = float(GAME_TIME)
+                        game_start = time.time()
+                        last_spawn = 0.0
+                        state = "game"
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if state == "menu":
+                    # Check mode button clicks
+                    btn_w, btn_h = 180, 44
+                    total_w = len(MODES) * btn_w + (len(MODES) - 1) * 12
+                    sx = W // 2 - total_w // 2
+                    clicked_mode = False
+                    for i in range(len(MODES)):
+                        bx = sx + i * (btn_w + 12)
+                        by = 220
+                        if bx <= event.pos[0] <= bx + btn_w and by <= event.pos[1] <= by + btn_h:
+                            mode_idx = i
+                            clicked_mode = True
+                    if not clicked_mode:
+                        score = hits = misses = streak = streak_best = 0
+                        targets.clear(); particles.clear(); floats.clear()
+                        time_left  = float(GAME_TIME)
+                        game_start = time.time()
+                        last_spawn = 0.0
+                        state = "game"
+
+                elif state == "results":
+                    score = hits = misses = streak = streak_best = 0
+                    targets.clear(); particles.clear(); floats.clear()
+                    time_left  = float(GAME_TIME)
+                    game_start = time.time()
+                    last_spawn = 0.0
+                    state = "game"
+
+                elif state == "game":
+                    mx, my = event.pos
+                    hit_any = False
+                    for t in targets[:]:
+                        if t.hit(mx, my):
+                            targets.remove(t)
+                            hits   += 1
+                            streak += 1
+                            streak_best = max(streak_best, streak)
+                            bonus  = streak * 10
+                            score += 100 + bonus
+                            spawnParticles(particles, mx, my, t.color)
+                            floats.append(FloatText(mx, my - 20,
+                                f"+{100 + bonus}",
+                                YELLOW if streak > 2 else WHITE))
+                            hit_any = True
+                            break
+                    if not hit_any:
+                        misses += 1
+                        streak  = 0
+                        floats.append(FloatText(mx, my - 10, "MISS", RED))
+
+        # ── Game update ──
+        if state == "game":
+            time_left = GAME_TIME - (time.time() - game_start)
+            if time_left <= 0:
+                time_left = 0
+                best_score = max(best_score, score)
+                state = "results"
+
+            now = time.time()
+            # Spawn
+            if (now - last_spawn > spawn_interval(mode_idx)
+                    and len(targets) < max_targets(mode_idx)):
+                mode_name = MODES[mode_idx]
+                targets.append(Target(mode_name))
+                last_spawn = now
+
+            # Update targets
+            expired_count = 0
+            alive = []
+            for t in targets:
+                t.update()
+                if t.expired():
+                    expired_count += 1
+                    streak = 0
+                else:
+                    alive.append(t)
+            misses   += expired_count
+            targets   = alive
+
+            for p in particles[:]:
+                p.update()
+                if p.dead(): particles.remove(p)
+
+            for f in floats[:]:
+                f.update()
+                if f.dead(): floats.remove(f)
+
+        # ── Draw ──
+        if state == "menu":
+            draw_menu(mode_idx, best_score)
+
+        elif state == "game":
+            screen.fill(BG)
+            draw_grid()
+            for t in targets:
+                t.draw(screen)
+            for p in particles:
+                p.draw(screen)
+            for f in floats:
+                f.draw(screen)
+            draw_hud(score, hits, misses, streak, streak_best, time_left, mode_idx)
+
+            # Custom crosshair
+            mx, my = pygame.mouse.get_pos()
+            if my > 72:
+                pygame.draw.line(screen, WHITE, (mx - 14, my), (mx - 5, my), 2)
+                pygame.draw.line(screen, WHITE, (mx + 5,  my), (mx + 14, my), 2)
+                pygame.draw.line(screen, WHITE, (mx, my - 14), (mx, my - 5), 2)
+                pygame.draw.line(screen, WHITE, (mx, my + 5),  (mx, my + 14), 2)
+                pygame.draw.circle(screen, WHITE, (mx, my), 3, 1)
+
+        elif state == "results":
+            draw_results(score, hits, misses, streak_best, best_score)
+
+        pygame.display.flip()
+
+
+def spawnParticles(particles, x, y, color):
+    for _ in range(12):
+        particles.append(Particle(x, y, color))
+
+
+if __name__ == "__main__":
+    main()
