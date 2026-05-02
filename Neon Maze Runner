@@ -1,0 +1,472 @@
+import pygame
+import random
+import math
+import sys
+import time
+from collections import deque
+
+pygame.init()
+
+W, H = 900, 650
+screen = pygame.display.set_mode((W, H))
+pygame.display.set_caption("Neon Maze Runner")
+clock = pygame.time.Clock()
+
+# Colors
+BG       = (5, 5, 18)
+WHITE    = (255, 255, 255)
+GRAY     = (100, 100, 120)
+NEON_B   = (0, 200, 255)
+NEON_G   = (0, 255, 140)
+NEON_P   = (200, 0, 255)
+NEON_Y   = (255, 220, 0)
+NEON_R   = (255, 50, 80)
+NEON_O   = (255, 140, 0)
+WALL_COL = (30, 30, 70)
+WALL_GLW = (60, 60, 140)
+HUD_BG   = (8, 8, 28)
+
+FONT_BIG   = pygame.font.SysFont("Arial", 38, bold=True)
+FONT_MED   = pygame.font.SysFont("Arial", 20, bold=True)
+FONT_SM    = pygame.font.SysFont("Arial", 14)
+FONT_TITLE = pygame.font.SysFont("Arial", 58, bold=True)
+
+CELL = 36
+COLS = (W) // CELL
+ROWS = (H - 60) // CELL
+OFFSET_Y = 60
+
+
+# ── Maze generation (recursive backtracker) ───────────────────────────────────
+def generate_maze(cols, rows):
+    visited = [[False] * cols for _ in range(rows)]
+    walls   = {(r, c, dr, dc): True
+               for r in range(rows) for c in range(cols)
+               for dr, dc in [(0,1),(1,0),(0,-1),(-1,0)]}
+
+    def carve(r, c):
+        visited[r][c] = True
+        dirs = [(0,1),(1,0),(0,-1),(-1,0)]
+        random.shuffle(dirs)
+        for dr, dc in dirs:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and not visited[nr][nc]:
+                walls[(r, c, dr, dc)] = False
+                walls[(nr, nc, -dr, -dc)] = False
+                carve(nr, nc)
+
+    carve(0, 0)
+    return walls
+
+
+# ── BFS pathfinding ───────────────────────────────────────────────────────────
+def bfs(walls, start, goal, rows, cols):
+    q = deque()
+    q.append((start, [start]))
+    seen = {start}
+    dirs = [(0,1),(1,0),(0,-1),(-1,0)]
+    while q:
+        (r, c), path = q.popleft()
+        if (r, c) == goal:
+            return path
+        for dr, dc in dirs:
+            nr, nc = r + dr, c + dc
+            if (0 <= nr < rows and 0 <= nc < cols
+                    and (nr, nc) not in seen
+                    and not walls.get((r, c, dr, dc), True)):
+                seen.add((nr, nc))
+                q.append(((nr, nc), path + [(nr, nc)]))
+    return []
+
+
+# ── Particle ──────────────────────────────────────────────────────────────────
+class Particle:
+    def __init__(self, x, y, color):
+        self.x, self.y = float(x), float(y)
+        ang = random.uniform(0, math.pi * 2)
+        spd = random.uniform(1.5, 5)
+        self.vx = math.cos(ang) * spd
+        self.vy = math.sin(ang) * spd
+        self.r  = random.uniform(2, 5)
+        self.alpha = 240
+        self.color = color
+
+    def update(self):
+        self.x += self.vx; self.y += self.vy
+        self.alpha -= 10
+
+    def dead(self): return self.alpha <= 0
+
+    def draw(self, surf):
+        s = pygame.Surface((12, 12), pygame.SRCALPHA)
+        pygame.draw.circle(s, (*self.color, int(self.alpha)), (6, 6), int(self.r))
+        surf.blit(s, (int(self.x) - 6, int(self.y) - 6))
+
+
+# ── Enemy ─────────────────────────────────────────────────────────────────────
+class Enemy:
+    COLORS = [NEON_R, NEON_O, NEON_P]
+
+    def __init__(self, row, col, color_idx=0):
+        self.row, self.col = row, col
+        self.px = col * CELL + CELL // 2
+        self.py = row * CELL + CELL // 2 + OFFSET_Y
+        self.color = self.COLORS[color_idx % len(self.COLORS)]
+        self.path  = []
+        self.move_timer = 0.0
+        self.move_interval = 0.35 + random.uniform(0, 0.15)
+        self.pulse = random.uniform(0, math.pi * 2)
+
+    def update(self, dt, walls, player_row, player_col, rows, cols):
+        self.move_timer  += dt
+        self.pulse       += dt * 4
+        if self.move_timer >= self.move_interval:
+            self.move_timer = 0.0
+            self.path = bfs(walls, (self.row, self.col),
+                            (player_row, player_col), rows, cols)
+            if len(self.path) > 1:
+                nr, nc = self.path[1]
+                self.row, self.col = nr, nc
+        tx = self.col * CELL + CELL // 2
+        ty = self.row * CELL + CELL // 2 + OFFSET_Y
+        self.px += (tx - self.px) * 0.18
+        self.py += (ty - self.py) * 0.18
+
+    def draw(self, surf):
+        glow = abs(math.sin(self.pulse)) * 0.5 + 0.5
+        cx, cy = int(self.px), int(self.py)
+        s = pygame.Surface((50, 50), pygame.SRCALPHA)
+        pygame.draw.circle(s, (*self.color, int(50 * glow)), (25, 25), 20)
+        surf.blit(s, (cx - 25, cy - 25))
+        pygame.draw.circle(surf, self.color, (cx, cy), 11)
+        pygame.draw.circle(surf, WHITE,       (cx, cy), 5)
+        # Eyes
+        pygame.draw.circle(surf, BG, (cx - 4, cy - 2), 3)
+        pygame.draw.circle(surf, BG, (cx + 4, cy - 2), 3)
+
+
+# ── Collectible ───────────────────────────────────────────────────────────────
+class Collectible:
+    def __init__(self, row, col, kind='dot'):
+        self.row, self.col = row, col
+        self.x = col * CELL + CELL // 2
+        self.y = row * CELL + CELL // 2 + OFFSET_Y
+        self.kind  = kind  # dot, gem, speed, freeze
+        self.pulse = random.uniform(0, math.pi * 2)
+        self.alive = True
+
+    def update(self, dt):
+        self.pulse += dt * 3
+
+    def draw(self, surf):
+        glow = abs(math.sin(self.pulse)) * 0.5 + 0.5
+        cx, cy = int(self.x), int(self.y)
+        if self.kind == 'dot':
+            pygame.draw.circle(surf, NEON_B, (cx, cy), 4)
+        elif self.kind == 'gem':
+            s = pygame.Surface((28, 28), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*NEON_Y, int(80 * glow)), (14, 14), 12)
+            surf.blit(s, (cx - 14, cy - 14))
+            pts = [(cx, cy-10),(cx+8,cy),(cx,cy+10),(cx-8,cy)]
+            pygame.draw.polygon(surf, NEON_Y, pts)
+            pygame.draw.polygon(surf, WHITE,  pts, 1)
+        elif self.kind == 'speed':
+            s = pygame.Surface((28, 28), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*NEON_G, int(70 * glow)), (14, 14), 12)
+            surf.blit(s, (cx - 14, cy - 14))
+            pygame.draw.polygon(surf, NEON_G,
+                [(cx-6,cy-9),(cx+8,cy),(cx-6,cy+9),(cx+2,cy)])
+        elif self.kind == 'freeze':
+            s = pygame.Surface((28, 28), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*NEON_B, int(70 * glow)), (14, 14), 12)
+            surf.blit(s, (cx - 14, cy - 14))
+            for ang in range(0, 360, 60):
+                r = math.radians(ang)
+                pygame.draw.line(surf, NEON_B,
+                    (cx, cy), (cx + int(math.cos(r)*9), cy + int(math.sin(r)*9)), 2)
+
+
+# ── Draw maze ─────────────────────────────────────────────────────────────────
+def draw_maze(surf, walls, rows, cols):
+    for r in range(rows):
+        for c in range(cols):
+            x = c * CELL
+            y = r * CELL + OFFSET_Y
+            # Right wall
+            if walls.get((r, c, 0, 1), True) and c < cols - 1:
+                pygame.draw.line(surf, WALL_COL, (x + CELL, y), (x + CELL, y + CELL), 3)
+                pygame.draw.line(surf, WALL_GLW, (x + CELL, y), (x + CELL, y + CELL), 1)
+            # Bottom wall
+            if walls.get((r, c, 1, 0), True) and r < rows - 1:
+                pygame.draw.line(surf, WALL_COL, (x, y + CELL), (x + CELL, y + CELL), 3)
+                pygame.draw.line(surf, WALL_GLW, (x, y + CELL), (x + CELL, y + CELL), 1)
+
+    # Border
+    pygame.draw.rect(surf, WALL_GLW, (0, OFFSET_Y, COLS * CELL, ROWS * CELL), 2)
+
+
+def draw_hud(score, lives, level, speed_time, freeze_time, dots_left, total_dots):
+    pygame.draw.rect(screen, HUD_BG, (0, 0, W, OFFSET_Y))
+    pygame.draw.line(screen, WALL_GLW, (0, OFFSET_Y), (W, OFFSET_Y), 1)
+
+    sc = FONT_BIG.render(str(score), True, NEON_Y)
+    screen.blit(sc, (W // 2 - sc.get_width() // 2, 8))
+
+    lv = FONT_MED.render(f"Level {level}", True, NEON_B)
+    screen.blit(lv, (16, 16))
+
+    for i in range(lives):
+        pygame.draw.circle(screen, NEON_G, (W - 20 - i * 26, 30), 9)
+
+    # Progress bar
+    prog = 1 - dots_left / max(total_dots, 1)
+    pygame.draw.rect(screen, (30, 30, 60), (W // 2 - 120, 46, 240, 8), border_radius=4)
+    pygame.draw.rect(screen, NEON_G, (W // 2 - 120, 46, int(240 * prog), 8), border_radius=4)
+
+    if speed_time > 0:
+        st = FONT_SM.render(f"SPEED {speed_time:.1f}s", True, NEON_G)
+        screen.blit(st, (16, 40))
+    if freeze_time > 0:
+        ft = FONT_SM.render(f"FREEZE {freeze_time:.1f}s", True, NEON_B)
+        screen.blit(ft, (110, 40))
+
+
+def draw_menu(best):
+    screen.fill(BG)
+    t = FONT_TITLE.render("NEON MAZE RUNNER", True, NEON_P)
+    screen.blit(t, (W // 2 - t.get_width() // 2, 80))
+    lines = [
+        ("Arrow Keys / WASD", "Move through the maze"),
+        ("Collect all dots",  "to advance to next level"),
+        (NEON_Y,  "Yellow gem = +50 pts"),
+        (NEON_G,  "Green bolt = Speed boost"),
+        (NEON_B,  "Blue snowflake = Freeze enemies"),
+    ]
+    for i, entry in enumerate(lines):
+        y = 220 + i * 44
+        if isinstance(entry[0], tuple):
+            col, txt = entry
+            dot_s = pygame.Surface((16, 16), pygame.SRCALPHA)
+            pygame.draw.circle(dot_s, col, (8, 8), 7)
+            screen.blit(dot_s, (W // 2 - 200, y + 2))
+            vt = FONT_MED.render(txt, True, WHITE)
+            screen.blit(vt, (W // 2 - 176, y))
+        else:
+            k, v = entry
+            kt = FONT_MED.render(k, True, NEON_Y)
+            vt = FONT_MED.render(v, True, GRAY)
+            screen.blit(kt, (W // 2 - 260, y))
+            screen.blit(vt, (W // 2 + 10, y))
+    if best > 0:
+        bs = FONT_MED.render(f"Best: {best}", True, NEON_O)
+        screen.blit(bs, (W // 2 - bs.get_width() // 2, 450))
+    st = FONT_BIG.render("Press SPACE to Start", True, WHITE)
+    screen.blit(st, (W // 2 - st.get_width() // 2, 520))
+
+
+def draw_gameover(score, best):
+    screen.fill(BG)
+    t = FONT_TITLE.render("GAME OVER", True, NEON_R)
+    screen.blit(t, (W // 2 - t.get_width() // 2, 180))
+    sc = FONT_BIG.render(f"Score: {score}", True, NEON_Y)
+    screen.blit(sc, (W // 2 - sc.get_width() // 2, 300))
+    if score >= best:
+        nb = FONT_BIG.render("NEW BEST!", True, NEON_O)
+        screen.blit(nb, (W // 2 - nb.get_width() // 2, 370))
+    rs = FONT_BIG.render("SPACE to Play Again", True, WHITE)
+    screen.blit(rs, (W // 2 - rs.get_width() // 2, 460))
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+def main():
+    state = "menu"
+    best  = 0
+
+    walls = None
+    collectibles = []
+    enemies = []
+    particles = []
+
+    pr = pc = 0
+    px = py = 0.0
+    score = lives = level = 0
+    speed_time = freeze_time = 0.0
+    total_dots = 0
+    move_cool  = 0.0
+
+    pulse_t = 0.0
+
+    def start_level(lvl, sc, lv):
+        nonlocal walls, collectibles, enemies, particles
+        nonlocal pr, pc, px, py, speed_time, freeze_time, total_dots, move_cool
+        walls = generate_maze(COLS, ROWS)
+        pr, pc = 0, 0
+        px = pc * CELL + CELL // 2
+        py = pr * CELL + CELL // 2 + OFFSET_Y
+        speed_time = freeze_time = 0.0
+        move_cool  = 0.0
+        particles  = []
+
+        # Place collectibles
+        collectibles = []
+        occupied = {(0, 0)}
+        for r in range(ROWS):
+            for c in range(COLS):
+                if (r, c) not in occupied:
+                    roll = random.random()
+                    if roll < 0.01:
+                        collectibles.append(Collectible(r, c, 'gem'))
+                    elif roll < 0.025:
+                        collectibles.append(Collectible(r, c, 'speed'))
+                    elif roll < 0.04:
+                        collectibles.append(Collectible(r, c, 'freeze'))
+                    elif roll < 0.65:
+                        collectibles.append(Collectible(r, c, 'dot'))
+
+        nonlocal total_dots
+        total_dots = sum(1 for col in collectibles if col.kind == 'dot')
+
+        # Enemies
+        count = min(1 + lvl, 5)
+        enemies = []
+        for i in range(count):
+            er = random.randint(ROWS // 2, ROWS - 1)
+            ec = random.randint(COLS // 2, COLS - 1)
+            enemies.append(Enemy(er, ec, i))
+
+    def new_game():
+        nonlocal score, lives, level
+        score = 0; lives = 3; level = 1
+        start_level(level, score, lives)
+
+    while True:
+        dt = min(clock.tick(60) / 1000.0, 0.05)
+        pulse_t += dt
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit(); sys.exit()
+                if event.key == pygame.K_SPACE:
+                    if state == "menu":
+                        new_game(); state = "game"
+                    elif state == "gameover":
+                        new_game(); state = "game"
+
+        if state == "game":
+            move_cool = max(0, move_cool - dt)
+            speed_time = max(0, speed_time - dt)
+            freeze_time = max(0, freeze_time - dt)
+            move_interval = 0.10 if speed_time > 0 else 0.16
+
+            keys = pygame.key.get_pressed()
+            moved = False
+            if move_cool <= 0:
+                move_dir = None
+                if keys[pygame.K_LEFT]  or keys[pygame.K_a]: move_dir = (0, -1)
+                elif keys[pygame.K_RIGHT] or keys[pygame.K_d]: move_dir = (0, 1)
+                elif keys[pygame.K_UP]   or keys[pygame.K_w]: move_dir = (-1, 0)
+                elif keys[pygame.K_DOWN] or keys[pygame.K_s]: move_dir = (1, 0)
+                if move_dir:
+                    dr, dc = move_dir
+                    if not walls.get((pr, pc, dr, dc), True):
+                        pr += dr; pc += dc
+                        move_cool = move_interval
+                        moved = True
+
+            # Smooth player position
+            tx = pc * CELL + CELL // 2
+            ty = pr * CELL + CELL // 2 + OFFSET_Y
+            px += (tx - px) * 0.25
+            py += (ty - py) * 0.25
+
+            # Update collectibles
+            for col in collectibles: col.update(dt)
+            # Collect
+            for col in collectibles[:]:
+                if col.alive and abs(pr - col.row) == 0 and abs(pc - col.col) == 0:
+                    col.alive = False
+                    if col.kind == 'dot':   score += 10
+                    elif col.kind == 'gem': score += 50
+                    elif col.kind == 'speed': speed_time = max(speed_time, 0) + 5.0
+                    elif col.kind == 'freeze': freeze_time = max(freeze_time, 0) + 4.0
+                    for _ in range(8):
+                        c = {'dot': NEON_B, 'gem': NEON_Y, 'speed': NEON_G, 'freeze': NEON_B}[col.kind]
+                        particles.append(Particle(col.x, col.y, c))
+            collectibles = [c for c in collectibles if c.alive]
+
+            # Check level clear
+            dots_left = sum(1 for c in collectibles if c.kind == 'dot')
+            if dots_left == 0:
+                score += level * 100
+                level += 1
+                start_level(level, score, lives)
+
+            # Update enemies
+            if freeze_time <= 0:
+                for e in enemies:
+                    e.update(dt, walls, pr, pc, ROWS, COLS)
+
+            # Enemy collision
+            for e in enemies:
+                if abs(e.row - pr) == 0 and abs(e.col - pc) == 0:
+                    lives -= 1
+                    for _ in range(16):
+                        particles.append(Particle(px, py, NEON_R))
+                    if lives <= 0:
+                        best = max(best, score)
+                        state = "gameover"
+                    else:
+                        pr, pc = 0, 0
+                    break
+
+            for p in particles: p.update()
+            particles = [p for p in particles if not p.dead()]
+
+        # ── Draw ──
+        screen.fill(BG)
+
+        if state == "menu":
+            draw_menu(best)
+
+        elif state == "game":
+            draw_maze(screen, walls, ROWS, COLS)
+            for col in collectibles: col.draw(screen)
+            for e in enemies: e.draw(screen)
+            for p in particles: p.draw(screen)
+
+            # Player
+            glow = abs(math.sin(pulse_t * 3)) * 0.4 + 0.6
+            cx, cy = int(px), int(py)
+            s = pygame.Surface((50, 50), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*NEON_G, int(60 * glow)), (25, 25), 22)
+            screen.blit(s, (cx - 25, cy - 25))
+            pygame.draw.circle(screen, NEON_G, (cx, cy), 12)
+            pygame.draw.circle(screen, WHITE,  (cx, cy), 6)
+
+            # Goal marker (bottom-right)
+            gr = ROWS - 1; gc = COLS - 1
+            gx = gc * CELL + CELL // 2
+            gy = gr * CELL + CELL // 2 + OFFSET_Y
+            s2 = pygame.Surface((40, 40), pygame.SRCALPHA)
+            pygame.draw.circle(s2, (*NEON_P, int(80 * glow)), (20, 20), 18)
+            screen.blit(s2, (gx - 20, gy - 20))
+            pygame.draw.circle(screen, NEON_P, (gx, gy), 10)
+
+            dots_left = sum(1 for c in collectibles if c.kind == 'dot')
+            draw_hud(score, lives, level, speed_time, freeze_time, dots_left, total_dots)
+
+            if freeze_time > 0:
+                ft = FONT_MED.render("ENEMIES FROZEN!", True, NEON_B)
+                screen.blit(ft, (W // 2 - ft.get_width() // 2, OFFSET_Y + 10))
+
+        elif state == "gameover":
+            draw_gameover(score, best)
+
+        pygame.display.flip()
+
+
+if __name__ == "__main__":
+    main()
