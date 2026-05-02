@@ -329,9 +329,6 @@ Stay grounded.
 Stay active.
 Stay mindful.
 Stay sharp.
-
-(continuing same concise style)
-
 Keep building.
 Stay consistent.
 Stay committed.
