@@ -1,0 +1,51 @@
+import pygame, random
+
+pygame.init()
+WIDTH, HEIGHT = 600, 400
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+clock = pygame.time.Clock()
+
+snake = [(100, 100)]
+dx, dy = 20, 0
+food = (random.randrange(0, WIDTH, 20), random.randrange(0, HEIGHT, 20))
+score = 0
+
+font = pygame.font.SysFont(None, 35)
+
+running = True
+while running:
+    screen.fill((0, 0, 0))
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP: dx, dy = 0, -20
+            if event.key == pygame.K_DOWN: dx, dy = 0, 20
+            if event.key == pygame.K_LEFT: dx, dy = -20, 0
+            if event.key == pygame.K_RIGHT: dx, dy = 20, 0
+
+    head = (snake[0][0] + dx, snake[0][1] + dy)
+    snake.insert(0, head)
+
+    if head == food:
+        food = (random.randrange(0, WIDTH, 20), random.randrange(0, HEIGHT, 20))
+        score += 1
+    else:
+        snake.pop()
+
+    if head in snake[1:] or not (0 <= head[0] < WIDTH and 0 <= head[1] < HEIGHT):
+        running = False
+
+    for s in snake:
+        pygame.draw.rect(screen, (0, 255, 0), (*s, 20, 20))
+
+    pygame.draw.rect(screen, (255, 0, 0), (*food, 20, 20))
+
+    text = font.render(f"Score: {score}", True, (255, 255, 255))
+    screen.blit(text, (10, 10))
+
+    pygame.display.update()
+    clock.tick(10)
+
+pygame.quit()
